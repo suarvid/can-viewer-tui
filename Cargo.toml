@@ -1,0 +1,14 @@
+[package]
+name = "can-viewer-tui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+embedded-can = "0.4.1"
+can = "0.2.0"
+crossterm = "0.27.0"
+ratatui = "0.26.1"
+socketcan = "3.3.0"
+style = "0.1.0"
