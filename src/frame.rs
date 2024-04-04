@@ -1,7 +1,7 @@
 use embedded_can::nb::Can;
 use embedded_can::Frame as EmbeddedFrame;
 use std::collections::HashMap;
-use std::fmt::Display;
+
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -45,7 +45,7 @@ impl FrameCaptor {
         let mut captured_frame = CapturedFrame::from_can_frame(rx_frame);
 
         if frame_info.captured_frames.contains_key(&captured_frame.id) {
-            let mut old_count = frame_info
+            let old_count = frame_info
                 .captured_frames
                 .get(&captured_frame.id)
                 .unwrap()
@@ -58,7 +58,7 @@ impl FrameCaptor {
             .insert(captured_frame.id, captured_frame);
     }
 
-    fn update_frames_per_second(&mut self, mut tot_frames_last_second: &mut usize)
+    fn update_frames_per_second(&mut self, tot_frames_last_second: &mut usize)
     {
         let mut frame_info = self.frame_info.lock().unwrap();
         frame_info.frames_per_second =

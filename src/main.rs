@@ -11,17 +11,17 @@ use crossterm::*;
 use ratatui::backend::CrosstermBackend;
 use ratatui::{prelude::*, widgets::*};
 
-use socketcan::{CanSocket, Frame, Socket};
+use socketcan::{CanSocket, Socket};
 
 use std::error::Error;
 use std::io;
 use std::process::exit;
-use std::sync::mpsc::{channel, Receiver};
-use std::sync::{mpsc, Arc, Mutex};
+
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::{env, thread};
 
-use crate::frame::{CapturedFrame, CapturedFrameInfo, FrameCaptor};
+use crate::frame::{CapturedFrameInfo, FrameCaptor};
 use crate::ui::ui;
 
 pub struct App<'a> {

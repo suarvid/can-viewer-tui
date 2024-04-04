@@ -1,11 +1,11 @@
 use ratatui::layout::Constraint::{Fill, Percentage};
 use ratatui::layout::{Constraint, Layout, Rect};
-use ratatui::style::{Color, Style, Stylize};
+use ratatui::style::{Color, Style};
 use ratatui::text::Text;
 use ratatui::widgets::Cell;
 use ratatui::{prelude::*, widgets::*};
 use ratatui::Frame;
-use std::collections::HashMap;
+
 
 use crate::frame::CapturedFrame;
 use crate::App;
@@ -28,9 +28,8 @@ pub fn ui(f: &mut Frame, app: &mut App) {
     );
 }
 
-// Kan ju kolla typ data_rep_mode i app, ifall format-strängen ska vara
-// decimal eller hex
-fn frame_data_as_str(frame: &CapturedFrame, app: &App) {}
+// TODO: Implement this to allow switching between Hex and Dec string representations
+fn frame_data_as_str(_frame: &CapturedFrame, _app: &App) {}
 
 fn draw_captured_frames(f: &mut Frame, app: &mut App, area: Rect) {
     let frame_info = app.frame_info.lock().unwrap();
