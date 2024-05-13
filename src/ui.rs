@@ -1,7 +1,9 @@
 use ratatui::layout::Constraint::{Fill, Percentage};
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Style};
+use ratatui::symbols::border;
 use ratatui::text::Text;
+use ratatui::widgets::block::Title;
 use ratatui::widgets::Cell;
 use ratatui::{prelude::*, widgets::*};
 use ratatui::Frame;
@@ -11,17 +13,32 @@ use crate::frame::CapturedFrame;
 use crate::App;
 
 pub fn ui(f: &mut Frame, app: &mut App) {
-    let rects = Layout::vertical([Percentage(95), Fill(1)]).split(f.size());
 
-    draw_captured_frames(f, app, rects[0]);
+    //let rects = Layout::vertical([Percentage(5), Fill(90)]).split(f.size());
+    let rects = Layout::default()
+      .direction(Direction::Vertical)
+      .constraints([
+        Percentage(5),
+        Fill(90)
+    ]).split(f.size());
+
+    let keybindings = Title::from(Line::from(vec![
+        " Quit ".into(),
+        "<Q> ".blue().bold(),
+        " Clear Frame Info ".into(),
+        "<C> ".blue().bold(),
+    ]));
+
+    draw_captured_frames(f, app, rects[1], keybindings);
+
     let frame_info = app.frame_info.lock().unwrap();
     let n_unique_frames = frame_info.captured_frames.len();
     let n_total_frames = frame_info.total_frame_count;
     let frames_per_second = frame_info.frames_per_second;
 
-    draw_footer(
+    draw_header(
         f,
-        rects[1],
+        rects[0],
         n_total_frames,
         n_unique_frames,
         frames_per_second,
@@ -31,7 +48,8 @@ pub fn ui(f: &mut Frame, app: &mut App) {
 // TODO: Implement this to allow switching between Hex and Dec string representations
 fn frame_data_as_str(_frame: &CapturedFrame, _app: &App) {}
 
-fn draw_captured_frames(f: &mut Frame, app: &mut App, area: Rect) {
+// TODO: A lil ugly that this is the place responsible for drawing keybindings
+fn draw_captured_frames(f: &mut Frame, app: &mut App, area: Rect, keybindings: Title) {
     let frame_info = app.frame_info.lock().unwrap();
     let header_style = Style::default().fg(Color::White).bg(Color::Black);
 
@@ -79,12 +97,23 @@ fn draw_captured_frames(f: &mut Frame, app: &mut App, area: Rect) {
         ],
     )
     .header(header)
-    .highlight_style(selected_style);
+    .highlight_style(selected_style)
+    .block(
+        Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Double)
+        .border_set(border::THICK)
+        .title(
+            keybindings
+              .alignment(Alignment::Center)
+              .position(block::Position::Bottom)
+        )
+    );
 
     f.render_stateful_widget(table, area, &mut app.table_state);
 }
 
-fn draw_footer(
+fn draw_header(
     f: &mut Frame,
     area: Rect,
     total_frame_count: usize,

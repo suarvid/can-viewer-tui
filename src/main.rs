@@ -66,6 +66,10 @@ fn run_app<B: Backend>(
                 if key.kind == KeyEventKind::Press {
                     match key.code {
                         KeyCode::Char('q') => return Ok(()),
+                        KeyCode::Char('c') => {
+                            let mut frame_info = app.frame_info.lock().unwrap();
+                            frame_info.clear_captured_frames();
+                        },
                         _ => {}
                     }
                 }

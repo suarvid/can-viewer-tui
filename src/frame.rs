@@ -22,6 +22,12 @@ impl CapturedFrameInfo {
             frames_per_second: 0,
         }
     }
+
+    pub fn clear_captured_frames(&mut self) {
+        self.captured_frames = HashMap::new();
+        self.total_frame_count = 0;
+        self.frames_per_second = 0;
+    }
 }
 
 pub struct FrameCaptor {
