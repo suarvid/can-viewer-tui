@@ -98,8 +98,8 @@ fn run_app<B: Backend>(
                         KeyCode::Char('c') => {
                             let mut frame_info = app.frame_info.lock().unwrap();
                             frame_info.clear_captured_frames();
-                        },
-                        KeyCode::Char('j') | KeyCode::Down => app.select_next_msg(), 
+                        }
+                        KeyCode::Char('j') | KeyCode::Down => app.select_next_msg(),
                         KeyCode::Char('k') | KeyCode::Up => app.select_prev_msg(),
                         _ => {}
                     }
@@ -131,13 +131,20 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let frame_info = Arc::new(Mutex::new(CapturedFrameInfo::new()));
 
-    let rx_sock = CanSocket::open(args[1].as_str())?;
-    let frame_captor = FrameCaptor::new(Arc::clone(&frame_info), rx_sock);
-    thread::spawn(move || frame_captor.capture());
+    match CanSocket::open(args[1].as_str()) {
+        Ok(rx_sock) => {
+            let frame_captor = FrameCaptor::new(Arc::clone(&frame_info), rx_sock);
+            thread::spawn(move || frame_captor.capture());
 
-    let app = App::new("CAN Capture", false, Arc::clone(&frame_info));
+            let app = App::new("CAN Capture", false, Arc::clone(&frame_info));
 
-    let res = run_app(&mut terminal, app, Duration::from_millis(100));
+            match run_app(&mut terminal, app, Duration::from_millis(100)) {
+                Ok(_) => {},
+                Err(e) => eprintln!("Error occured when running application: {}", e),
+            }
+        }
+        Err(e) => eprintln!("Failed to open can interface {}. Reason: {}", args[1].as_str(), e),
+    }
 
     disable_raw_mode()?;
     execute!(
@@ -146,10 +153,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         DisableMouseCapture
     )?;
     terminal.show_cursor()?;
-
-    if let Err(err) = res {
-        println!("{err:?}");
-    }
 
     Ok(())
 }
