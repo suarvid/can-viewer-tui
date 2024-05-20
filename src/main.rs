@@ -48,6 +48,35 @@ impl<'a> App<'a> {
             row_color_alt: Color::Gray,
         }
     }
+
+    pub fn select_next_msg(&mut self) {
+        let i = match self.table_state.selected() {
+            Some(i) => {
+                if i >= self.frame_info.lock().unwrap().captured_frames.len() - 1 {
+                    0
+                } else {
+                    i + 1
+                }
+            }
+            None => 0,
+        };
+        self.table_state.select(Some(i));
+    }
+
+    pub fn select_prev_msg(&mut self) {
+        let i = match self.table_state.selected() {
+            Some(i) => {
+                if i == 0 {
+                    self.frame_info.lock().unwrap().captured_frames.len() - 1
+                } else {
+                    i - 1
+                }
+            }
+            None => self.frame_info.lock().unwrap().captured_frames.len() - 1,
+        };
+
+        self.table_state.select(Some(i));
+    }
 }
 
 fn run_app<B: Backend>(
@@ -70,6 +99,8 @@ fn run_app<B: Backend>(
                             let mut frame_info = app.frame_info.lock().unwrap();
                             frame_info.clear_captured_frames();
                         },
+                        KeyCode::Char('j') | KeyCode::Down => app.select_next_msg(), 
+                        KeyCode::Char('k') | KeyCode::Up => app.select_prev_msg(),
                         _ => {}
                     }
                 }

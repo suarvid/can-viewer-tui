@@ -13,8 +13,6 @@ use crate::frame::CapturedFrame;
 use crate::App;
 
 pub fn ui(f: &mut Frame, app: &mut App) {
-
-    //let rects = Layout::vertical([Percentage(5), Fill(90)]).split(f.size());
     let rects = Layout::default()
       .direction(Direction::Vertical)
       .constraints([
@@ -75,10 +73,7 @@ fn draw_captured_frames(f: &mut Frame, app: &mut App, area: Rect, keybindings: T
         cells.push(Cell::from(Text::from(format!("{}", frame.dlc))));
         cells.push(Cell::from(Text::from(format!("{}", frame.count))));
         cells.push(Cell::from(Text::from(format!("{}", frame.is_extended))));
-        cells.push(Cell::from(Text::from(format!(
-            "{}",
-            frame.get_data_string()
-        ))));
+        cells.push(Cell::from(Text::from(frame.get_data_string().to_string())));
         rows.push(
             Row::new(cells)
                 .style(Style::default().fg(Color::Black).bg(color))

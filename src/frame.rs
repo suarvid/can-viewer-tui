@@ -30,6 +30,12 @@ impl CapturedFrameInfo {
     }
 }
 
+impl Default for CapturedFrameInfo {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct FrameCaptor {
     frame_info: Arc<Mutex<CapturedFrameInfo>>,
     rx_socket: CanSocket,
@@ -64,11 +70,9 @@ impl FrameCaptor {
             .insert(captured_frame.id, captured_frame);
     }
 
-    fn update_frames_per_second(&mut self, tot_frames_last_second: &mut usize)
-    {
+    fn update_frames_per_second(&mut self, tot_frames_last_second: &mut usize) {
         let mut frame_info = self.frame_info.lock().unwrap();
-        frame_info.frames_per_second =
-            frame_info.total_frame_count - *tot_frames_last_second;
+        frame_info.frames_per_second = frame_info.total_frame_count - *tot_frames_last_second;
         *tot_frames_last_second = frame_info.total_frame_count;
     }
 
@@ -111,9 +115,7 @@ impl CapturedFrame {
     fn from_can_frame(frame: CanFrame) -> Self {
         let mut data = [0; 8];
 
-        for i in 0..frame.data().len() {
-            data[i] = frame.data()[i];
-        }
+        data[..frame.data().len()].copy_from_slice(frame.data());
 
         Self {
             id: frame.raw_id(),
@@ -126,10 +128,6 @@ impl CapturedFrame {
     }
 
     pub fn get_data_string(&self) -> String {
-        format!("{:#04x?}", self.data)
-            .replace("\n", "")
-            .replace("[", "")
-            .replace("]", "")
-            .replace(",", "")
+        format!("{:#04x?}", self.data).replace(['[', ']', ',', '\n'], "")
     }
 }
