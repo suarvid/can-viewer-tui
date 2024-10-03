@@ -9,7 +9,8 @@ use std::time::Instant;
 use socketcan::{CanFrame, CanSocket, Frame};
 
 pub struct CapturedFrameInfo {
-    pub captured_frames: HashMap<u32, CapturedFrame>,
+    pub captured_frame_vec: Vec<CapturedFrame>,
+    pub captured_frame_set: HashMap<u32, CapturedFrame>,
     pub total_frame_count: usize,
     pub frames_per_second: usize,
 }
@@ -17,14 +18,16 @@ pub struct CapturedFrameInfo {
 impl CapturedFrameInfo {
     pub fn new() -> Self {
         Self {
-            captured_frames: HashMap::new(),
+            captured_frame_vec: vec![],
+            captured_frame_set: HashMap::new(),
             total_frame_count: 0,
             frames_per_second: 0,
         }
     }
 
     pub fn clear_captured_frames(&mut self) {
-        self.captured_frames = HashMap::new();
+        self.captured_frame_vec = vec![];
+        self.captured_frame_set = HashMap::new();
         self.total_frame_count = 0;
         self.frames_per_second = 0;
     }
@@ -49,16 +52,18 @@ impl FrameCaptor {
         }
     }
 
-    /// Processes a received frame, adding it to the stored frame information
-    fn process_frame(&mut self, rx_frame: CanFrame) {
-        let mut frame_info = self.frame_info.lock().unwrap();
-        frame_info.total_frame_count += 1;
-
-        let mut captured_frame = CapturedFrame::from_can_frame(rx_frame);
-
-        if frame_info.captured_frames.contains_key(&captured_frame.id) {
+    fn add_frame_to_captured_frame_set(
+        &self,
+        frame_info: &mut CapturedFrameInfo,
+        mut captured_frame: CapturedFrame,
+    ) {
+        // Add to set
+        if frame_info
+            .captured_frame_set
+            .contains_key(&captured_frame.id)
+        {
             let old_count = frame_info
-                .captured_frames
+                .captured_frame_set
                 .get(&captured_frame.id)
                 .unwrap()
                 .count;
@@ -66,8 +71,22 @@ impl FrameCaptor {
         }
 
         frame_info
-            .captured_frames
+            .captured_frame_set
             .insert(captured_frame.id, captured_frame);
+    }
+
+    /// Processes a received frame, adding it to the stored frame information
+    fn process_frame(&mut self, rx_frame: CanFrame) {
+        let mut frame_info = self.frame_info.lock().unwrap();
+        frame_info.total_frame_count += 1;
+
+        let captured_frame = CapturedFrame::from_can_frame(rx_frame);
+
+        // Kommer denna clone vara otroligt långsam?
+        frame_info.captured_frame_vec.push(captured_frame.clone());
+
+        // Add to set
+        self.add_frame_to_captured_frame_set(&mut frame_info, captured_frame);
     }
 
     fn update_frames_per_second(&mut self, tot_frames_last_second: &mut usize) {

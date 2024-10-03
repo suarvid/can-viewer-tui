@@ -5,20 +5,17 @@ use ratatui::symbols::border;
 use ratatui::text::Text;
 use ratatui::widgets::block::Title;
 use ratatui::widgets::Cell;
-use ratatui::{prelude::*, widgets::*};
 use ratatui::Frame;
-
+use ratatui::{prelude::*, widgets::*};
 
 use crate::frame::CapturedFrame;
 use crate::App;
 
 pub fn ui(f: &mut Frame, app: &mut App) {
     let rects = Layout::default()
-      .direction(Direction::Vertical)
-      .constraints([
-        Percentage(5),
-        Fill(90)
-    ]).split(f.size());
+        .direction(Direction::Vertical)
+        .constraints([Percentage(5), Fill(90)])
+        .split(f.size());
 
     let keybindings = Title::from(Line::from(vec![
         " Quit ".into(),
@@ -30,7 +27,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
     draw_captured_frames(f, app, rects[1], keybindings);
 
     let frame_info = app.frame_info.lock().unwrap();
-    let n_unique_frames = frame_info.captured_frames.len();
+    let n_unique_frames = frame_info.captured_frame_set.len();
     let n_total_frames = frame_info.total_frame_count;
     let frames_per_second = frame_info.frames_per_second;
 
@@ -62,7 +59,7 @@ fn draw_captured_frames(f: &mut Frame, app: &mut App, area: Rect, keybindings: T
 
     let mut rows: Vec<Row> = Vec::new();
 
-    for (i, (_, frame)) in frame_info.captured_frames.iter().enumerate() {
+    for (i, (_, frame)) in frame_info.captured_frame_set.iter().enumerate() {
         let color = match i % 2 {
             0 => app.row_color_main,
             _ => app.row_color_alt,
@@ -95,14 +92,14 @@ fn draw_captured_frames(f: &mut Frame, app: &mut App, area: Rect, keybindings: T
     .highlight_style(selected_style)
     .block(
         Block::default()
-        .borders(Borders::ALL)
-        .border_type(BorderType::Double)
-        .border_set(border::THICK)
-        .title(
-            keybindings
-              .alignment(Alignment::Center)
-              .position(block::Position::Bottom)
-        )
+            .borders(Borders::ALL)
+            .border_type(BorderType::Double)
+            .border_set(border::THICK)
+            .title(
+                keybindings
+                    .alignment(Alignment::Center)
+                    .position(block::Position::Bottom),
+            ),
     );
 
     f.render_stateful_widget(table, area, &mut app.table_state);

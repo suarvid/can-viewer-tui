@@ -52,7 +52,7 @@ impl<'a> App<'a> {
     pub fn select_next_msg(&mut self) {
         let i = match self.table_state.selected() {
             Some(i) => {
-                if i >= self.frame_info.lock().unwrap().captured_frames.len() - 1 {
+                if i >= self.frame_info.lock().unwrap().captured_frame_set.len() - 1 {
                     0
                 } else {
                     i + 1
@@ -67,12 +67,12 @@ impl<'a> App<'a> {
         let i = match self.table_state.selected() {
             Some(i) => {
                 if i == 0 {
-                    self.frame_info.lock().unwrap().captured_frames.len() - 1
+                    self.frame_info.lock().unwrap().captured_frame_set.len() - 1
                 } else {
                     i - 1
                 }
             }
-            None => self.frame_info.lock().unwrap().captured_frames.len() - 1,
+            None => self.frame_info.lock().unwrap().captured_frame_set.len() - 1,
         };
 
         self.table_state.select(Some(i));
@@ -139,11 +139,15 @@ fn main() -> Result<(), Box<dyn Error>> {
             let app = App::new("CAN Capture", false, Arc::clone(&frame_info));
 
             match run_app(&mut terminal, app, Duration::from_millis(100)) {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(e) => eprintln!("Error occured when running application: {}", e),
             }
         }
-        Err(e) => eprintln!("Failed to open can interface {}. Reason: {}", args[1].as_str(), e),
+        Err(e) => eprintln!(
+            "Failed to open can interface {}. Reason: {}",
+            args[1].as_str(),
+            e
+        ),
     }
 
     disable_raw_mode()?;
