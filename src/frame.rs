@@ -3,114 +3,144 @@ use embedded_can::Frame as EmbeddedFrame;
 use std::collections::HashMap;
 
 use std::hash::{Hash, Hasher};
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use socketcan::{CanFrame, CanSocket, Frame};
 
-pub struct CapturedFrameInfo {
-    pub captured_frame_vec: Vec<CapturedFrame>,
-    pub captured_frame_set: HashMap<u32, CapturedFrame>,
-    pub total_frame_count: usize,
-    pub frames_per_second: usize,
+#[derive(Clone)]
+pub enum CapturedFrames {
+    List(Vec<CanFrame>),
+    Set(HashMap<u32, CanFrame>),
 }
 
-impl CapturedFrameInfo {
+pub struct CapturedFrameState {
+    captured_frames: CapturedFrames,
+    total_frame_count: usize,
+    frames_per_second: usize,
+}
+
+impl CapturedFrameState {
     pub fn new() -> Self {
         Self {
-            captured_frame_vec: vec![],
-            captured_frame_set: HashMap::new(),
+            captured_frames: CapturedFrames::List(vec![]),
             total_frame_count: 0,
             frames_per_second: 0,
         }
     }
-
-    pub fn clear_captured_frames(&mut self) {
-        self.captured_frame_vec = vec![];
-        self.captured_frame_set = HashMap::new();
-        self.total_frame_count = 0;
-        self.frames_per_second = 0;
-    }
-}
-
-impl Default for CapturedFrameInfo {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 pub struct FrameCaptor {
-    frame_info: Arc<Mutex<CapturedFrameInfo>>,
+    //frame_info: Arc<Mutex<CapturedFrameInfo>>,
+    captured_frames: CapturedFrameState,
     rx_socket: CanSocket,
+    rxd_frames_channel: Sender<CapturedFrames>,
+    // kommer nog behöva en Receiver för commandon också, t.ex. för att clear:a frames
 }
 
 impl FrameCaptor {
-    pub fn new(frame_info: Arc<Mutex<CapturedFrameInfo>>, rx_socket: CanSocket) -> Self {
-        FrameCaptor {
-            frame_info,
+    //pub fn new(frame_info: Arc<Mutex<CapturedFrameInfo>>, rx_socket: CanSocket) -> Self {
+    //    FrameCaptor {
+    //       frame_info,
+    //        rx_socket,
+    //    }
+    //}
+
+    pub fn new(rx_socket: CanSocket, rxd_frames_channel: Sender<CapturedFrames>) -> Self {
+        Self {
+            captured_frames: CapturedFrameState::new(),
             rx_socket,
+            rxd_frames_channel,
         }
     }
 
-    fn add_frame_to_captured_frame_set(
-        &self,
-        frame_info: &mut CapturedFrameInfo,
-        mut captured_frame: CapturedFrame,
-    ) {
-        // Add to set
-        if frame_info
-            .captured_frame_set
-            .contains_key(&captured_frame.id)
-        {
-            let old_count = frame_info
-                .captured_frame_set
-                .get(&captured_frame.id)
-                .unwrap()
-                .count;
-            captured_frame.count = old_count + 1;
+    pub fn clear_captured_frames(&mut self) {
+        match &mut self.captured_frames.captured_frames {
+            CapturedFrames::List(l) => l.clear(),
+            CapturedFrames::Set(s) => s.clear(),
+        }
+        self.captured_frames.total_frame_count = 0;
+        self.captured_frames.frames_per_second = 0;
+    }
+
+    //fn add_frame_to_captured_frame_set(
+    //    &self,
+    //    frame_info: &mut CapturedFrameInfo,
+    //    mut captured_frame: CapturedFrame,
+    //) {
+    //    // Add to set
+    //    if frame_info
+    //        .captured_frame_set
+    //        .contains_key(&captured_frame.id)
+    //    {
+    //        let old_count = frame_info
+    //            .captured_frame_set
+    //            .get(&captured_frame.id)
+    //            .unwrap()
+    //            .count;
+    //        captured_frame.count = old_count + 1;
+    //    }
+
+    //    frame_info
+    //        .captured_frame_set
+    //        .insert(captured_frame.id, captured_frame);
+    //}
+
+    fn process_frame(&mut self, rx_frame: CanFrame) {
+        match &mut self.captured_frames.captured_frames {
+            CapturedFrames::List(l) => {
+                l.push(rx_frame);
+            }
+            CapturedFrames::Set(_s) => {
+                todo!("oklart")
+            }
         }
 
-        frame_info
-            .captured_frame_set
-            .insert(captured_frame.id, captured_frame);
+        self.captured_frames.total_frame_count += 1;
     }
 
     /// Processes a received frame, adding it to the stored frame information
-    fn process_frame(&mut self, rx_frame: CanFrame) {
-        let mut frame_info = self.frame_info.lock().unwrap();
-        frame_info.total_frame_count += 1;
+    //fn process_frame(&mut self, rx_frame: CanFrame) {
+    //    let mut frame_info = self.frame_info.lock().unwrap();
+    //    frame_info.total_frame_count += 1;
 
-        let captured_frame = CapturedFrame::from_can_frame(rx_frame);
+    //    let captured_frame = CapturedFrame::from_can_frame(rx_frame);
 
-        // Kommer denna clone vara otroligt långsam?
-        frame_info.captured_frame_vec.push(captured_frame.clone());
+    //    // Kommer denna clone vara otroligt långsam?
+    //    // Troligen inte så farlig, clone() på en frame tar inte så lång tid
+    //    frame_info.captured_frame_vec.push(captured_frame.clone());
 
-        // Add to set
-        self.add_frame_to_captured_frame_set(&mut frame_info, captured_frame);
-    }
+    //    // Add to set
+    //    self.add_frame_to_captured_frame_set(&mut frame_info, captured_frame);
+    //}
 
-    fn update_frames_per_second(&mut self, tot_frames_last_second: &mut usize) {
-        let mut frame_info = self.frame_info.lock().unwrap();
-        frame_info.frames_per_second = frame_info.total_frame_count - *tot_frames_last_second;
-        *tot_frames_last_second = frame_info.total_frame_count;
+    fn update_frames_per_second(&mut self, tot_frames_last_second: usize) -> usize {
+        self.captured_frames.frames_per_second =
+            self.captured_frames.total_frame_count - tot_frames_last_second;
+
+        self.captured_frames.total_frame_count
     }
 
     pub fn capture(mut self) {
         let mut running_second_timestamp = Instant::now();
-        let mut tot_frames_last_second = 0;
+        let mut tot_frames_as_of_last_second = 0;
+
         loop {
             if let Ok(rx_frame) = self.rx_socket.receive() {
                 self.process_frame(rx_frame);
             }
 
             if running_second_timestamp.elapsed().as_secs() >= 1 {
-                self.update_frames_per_second(&mut tot_frames_last_second);
+                tot_frames_as_of_last_second =
+                    self.update_frames_per_second(tot_frames_as_of_last_second);
                 running_second_timestamp = Instant::now();
             }
         }
     }
 }
 
+// TODO: förhoppningsvis kan vi ta bort allt detta
 // Represents information about a captured CAN frame
 #[derive(Eq, PartialEq, Clone)]
 pub struct CapturedFrame {
