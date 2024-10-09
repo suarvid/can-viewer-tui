@@ -8,7 +8,7 @@ use ratatui::text::Text;
 use ratatui::widgets::block::Title;
 use ratatui::widgets::Cell;
 use ratatui::{prelude::*, widgets::*};
-use socketcan::{CanFrame}; //, Frame};
+use socketcan::CanFrame;
 
 //use crate::frame::CapturedFrame;
 use crate::App;
@@ -17,7 +17,7 @@ pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
     let rects = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Percentage(5), Fill(90)])
-        .split(f.size());
+        .split(f.area());
 
     let keybindings = Title::from(Line::from(vec![
         " Quit ".into(),
@@ -28,9 +28,7 @@ pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
 
     draw_captured_frames(f, app, rects[1], keybindings);
 
-    //let frame_info = app.frame_info.lock().unwrap();
-    let frame_info = app.frame_captor.get_captured_frames();
-    let n_unique_frames = app.frame_captor.get_captured_frames_len(); //frame_info.captured_frame_set.len();
+    let n_unique_frames = app.frame_captor.get_captured_frames_len();
     let n_total_frames = app.frame_captor.get_total_frame_count();
     let frames_per_second = app.frame_captor.get_frames_per_second();
 
@@ -42,9 +40,6 @@ pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
         frames_per_second,
     );
 }
-
-// TODO: Implement this to allow switching between Hex and Dec string representations
-// fn frame_data_as_str(_frame: &CapturedFrame, _app: &App) {}
 
 fn add_row_for_frame(
     i: usize,
