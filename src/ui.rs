@@ -1,4 +1,3 @@
-use std::path::Display;
 
 use embedded_can::Frame;
 use ratatui::layout::Constraint::{Fill, Percentage};
@@ -8,9 +7,8 @@ use ratatui::symbols::border;
 use ratatui::text::Text;
 use ratatui::widgets::block::Title;
 use ratatui::widgets::Cell;
-use ratatui::*;
 use ratatui::{prelude::*, widgets::*};
-use socketcan::{CanDataFrame, CanFrame}; //, Frame};
+use socketcan::{CanFrame}; //, Frame};
 
 //use crate::frame::CapturedFrame;
 use crate::App;

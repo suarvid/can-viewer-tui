@@ -3,14 +3,9 @@ mod ui;
 
 use anyhow::Result;
 
-use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, KeyCode};
+use crossterm::event::{self, KeyCode};
 use crossterm::event::{Event, KeyEventKind};
-use crossterm::execute;
-use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
-};
 
-use ratatui::backend::CrosstermBackend;
 use ratatui::{prelude::*, widgets::*};
 
 use std::io;
