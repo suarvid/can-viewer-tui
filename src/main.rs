@@ -116,28 +116,34 @@ fn main() -> Result<()> {
         exit(1);
     }
 
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let mut terminal = ratatui::init();
+    terminal.clear()?;
+
+
+    //enable_raw_mode()?;
+    //let mut stdout = io::stdout();
+    //execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    //let backend = CrosstermBackend::new(stdout);
+    //let mut terminal = Terminal::new(backend)?;
     let frame_captor = FrameCaptor::new(args[1].clone())?;
 
     let app = App::new("CAN Capture", false, frame_captor);
 
-    enable_raw_mode()?;
 
     match run_app(&mut terminal, app, Duration::from_millis(100)) {
         Ok(_) => {}
         Err(e) => eprintln!("Error occured when running application: {}", e),
     }
 
-    disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
-    terminal.show_cursor()?;
+    ratatui::restore();
+
+    //disable_raw_mode()?;
+    //execute!(
+    //    terminal.backend_mut(),
+    //    LeaveAlternateScreen,
+    //    DisableMouseCapture
+    //)?;
+    //terminal.show_cursor()?;
 
     Ok(())
 }

@@ -50,7 +50,9 @@ impl CapturedFrameState {
     }
 
     fn update_frames_per_second(&mut self, tot_frames_last_second: usize) -> usize {
-        self.frames_per_second = self.total_frame_count - tot_frames_last_second;
+        if self.total_frame_count > tot_frames_last_second {
+            self.frames_per_second = self.total_frame_count - tot_frames_last_second;
+        }
 
         self.total_frame_count
     }
