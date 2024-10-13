@@ -1,14 +1,45 @@
 use anyhow::Result;
 use embedded_can::nb::Can;
+use embedded_can::Frame;
 use socketcan::{CanFrame, CanSocket, Socket};
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
+
+#[derive(Clone)]
+pub struct TimestampedFrame {
+    pub frame: CanFrame,
+    timestamp: SystemTime,
+}
+
+impl TimestampedFrame {
+    pub fn new(frame: CanFrame) -> Self {
+        Self {
+            frame,
+            timestamp: SystemTime::now(),
+        }
+    }
+
+    pub fn get_timestamp(&self) -> u128 {
+        self.timestamp
+            .duration_since(UNIX_EPOCH)
+            .expect("Error unwrapping duration since epoch!")
+            .as_millis()
+    }
+
+    pub fn get_numeric_id(&self) -> u32 {
+        match CanFrame::id(&self.frame) {
+            socketcan::Id::Standard(standard_id) => standard_id.as_raw() as u32,
+            socketcan::Id::Extended(extended_id) => extended_id.as_raw(),
+        }
+
+    }
+}
 
 #[derive(Clone)]
 pub enum CapturedFrames {
-    List(Vec<CanFrame>),
+    List(Vec<TimestampedFrame>),
     Set(HashMap<u32, CanFrame>),
 }
 
@@ -39,10 +70,10 @@ impl CapturedFrameState {
     fn process_frame(&mut self, rx_frame: CanFrame) {
         match &mut self.captured_frames {
             CapturedFrames::List(l) => {
-                l.push(rx_frame);
+                l.push(TimestampedFrame::new(rx_frame));
             }
             CapturedFrames::Set(_s) => {
-                todo!("oklart")
+                todo!("Set of frames not yet supported!")
             }
         }
 

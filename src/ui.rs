@@ -10,7 +10,7 @@ use ratatui::widgets::Cell;
 use ratatui::{prelude::*, widgets::*};
 use socketcan::CanFrame;
 
-//use crate::frame::CapturedFrame;
+use crate::frame::TimestampedFrame;
 use crate::App;
 
 pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
@@ -41,9 +41,10 @@ pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
     );
 }
 
-fn add_row_for_frame(
+
+fn draw_timestamped_frame(
     i: usize,
-    frame: &CanFrame,
+    frame: &TimestampedFrame,
     rows: &mut Vec<Row>,
     row_color_main: Color,
     row_color_alt: Color,
@@ -54,18 +55,19 @@ fn add_row_for_frame(
     };
 
     let mut cells = vec![];
-    cells.push(Cell::from(Text::from(format!("{:x?}", CanFrame::id(frame)))));
+    cells.push(Cell::from(Text::from(format!("{}", frame.get_timestamp()))));
+    cells.push(Cell::from(Text::from(format!("0x{:x}", frame.get_numeric_id()))));
     cells.push(Cell::from(Text::from(format!(
         "{:?}",
-        CanFrame::dlc(frame)
+        CanFrame::dlc(&frame.frame)
     ))));
     cells.push(Cell::from(Text::from(format!(
         "{}",
-        CanFrame::is_extended(frame)
+        CanFrame::is_extended(&frame.frame)
     ))));
     cells.push(Cell::from(Text::from(format!(
         "{:?}",
-        CanFrame::data(frame)
+        CanFrame::data(&frame.frame)
     ))));
     rows.push(
         Row::new(cells)
@@ -77,28 +79,25 @@ fn add_row_for_frame(
 // TODO: A lil ugly that this is the place responsible for drawing keybindings
 fn draw_captured_frames(f: &mut ratatui::Frame, app: &mut App, area: Rect, keybindings: Title) {
     let header_style = Style::default().fg(Color::White).bg(Color::Black);
-
     let selected_style = Style::default().fg(Color::Black).bg(Color::LightYellow);
+    let mut rows: Vec<Row> = Vec::new();
 
-    let header = ["ID", "DLC", "Extended", "Data"]
+    let header = ["Timestamp", "ID", "DLC", "Extended", "Data"]
         .into_iter()
         .map(Cell::from)
         .collect::<Row>()
         .style(header_style)
         .height(1);
 
-    let mut rows: Vec<Row> = Vec::new();
 
     match app.frame_captor.get_captured_frames() {
         crate::frame::CapturedFrames::List(vec) => {
             for (i, frame) in vec.iter().enumerate() {
-                add_row_for_frame(i, frame, &mut rows, app.row_color_main, app.row_color_alt);
+                draw_timestamped_frame(i, frame, &mut rows, app.row_color_main, app.row_color_alt);
             }
         }
-        crate::frame::CapturedFrames::Set(hash_map) => {
-            for (i, (_, frame)) in hash_map.iter().enumerate() {
-                add_row_for_frame(i, frame, &mut rows, app.row_color_main, app.row_color_alt);
-            }
+        crate::frame::CapturedFrames::Set(_hash_map) => {
+            todo!("Add support for drawing set of counted frames!");
         }
     }
 
@@ -108,6 +107,7 @@ fn draw_captured_frames(f: &mut ratatui::Frame, app: &mut App, area: Rect, keybi
             Constraint::Fill(1),
             Constraint::Percentage(5),
             Constraint::Percentage(10),
+            Constraint::Percentage(5),
             Constraint::Fill(1),
         ],
     )
