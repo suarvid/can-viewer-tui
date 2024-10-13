@@ -33,7 +33,6 @@ impl TimestampedFrame {
             socketcan::Id::Standard(standard_id) => standard_id.as_raw() as u32,
             socketcan::Id::Extended(extended_id) => extended_id.as_raw(),
         }
-
     }
 }
 
@@ -80,12 +79,17 @@ impl CapturedFrameState {
         self.total_frame_count += 1;
     }
 
-    fn update_frames_per_second(&mut self, tot_frames_last_second: usize) -> usize {
-        if self.total_frame_count > tot_frames_last_second {
-            self.frames_per_second = self.total_frame_count - tot_frames_last_second;
-        }
+    /* Updates the number of frames per second, as seen by the Frame Captor
 
-        self.total_frame_count
+       # Arguments
+
+       * `tot_frames_as_of_last_second` - The total number of frames seen on
+          the bus, as of the last second.
+    */
+    fn update_frames_per_second(&mut self, tot_frames_as_of_last_second: usize) {
+        if self.total_frame_count > tot_frames_as_of_last_second {
+            self.frames_per_second = self.total_frame_count - tot_frames_as_of_last_second;
+        }
     }
 }
 
@@ -135,20 +139,21 @@ impl FrameCaptor {
         self.captured_frames.lock().unwrap().frames_per_second
     }
 
-    fn capture(mut rx_sock: CanSocket, a: Arc<Mutex<CapturedFrameState>>) {
+    fn capture(mut rx_sock: CanSocket, frame_state: Arc<Mutex<CapturedFrameState>>) {
         let mut running_second_timestamp = Instant::now();
         let mut tot_frames_as_of_last_second = 0;
 
         loop {
             if let Ok(rx_frame) = rx_sock.receive() {
-                a.lock().unwrap().process_frame(rx_frame);
+                frame_state.lock().unwrap().process_frame(rx_frame);
             }
 
             if running_second_timestamp.elapsed().as_secs() >= 1 {
-                tot_frames_as_of_last_second = a
-                    .lock()
-                    .unwrap()
-                    .update_frames_per_second(tot_frames_as_of_last_second);
+                let mut f = frame_state.lock().unwrap();
+
+                f.update_frames_per_second(tot_frames_as_of_last_second);
+                tot_frames_as_of_last_second = f.total_frame_count;
+
                 running_second_timestamp = Instant::now();
             }
         }
