@@ -46,6 +46,7 @@ pub struct CapturedFrameState {
     captured_frames: CapturedFrames,
     total_frame_count: usize,
     frames_per_second: usize,
+    frupp: Vec<(f64, SystemTime)>,
 }
 
 impl CapturedFrameState {
@@ -54,6 +55,7 @@ impl CapturedFrameState {
             captured_frames: CapturedFrames::List(vec![]),
             total_frame_count: 0,
             frames_per_second: 0,
+            frupp: vec![],
         }
     }
 
@@ -89,6 +91,9 @@ impl CapturedFrameState {
     fn update_frames_per_second(&mut self, tot_frames_as_of_last_second: usize) {
         if self.total_frame_count > tot_frames_as_of_last_second {
             self.frames_per_second = self.total_frame_count - tot_frames_as_of_last_second;
+            let timestamp = SystemTime::now();
+            self.frupp.push((self.frames_per_second as f64, timestamp));
+            //.push((timestamp as f64, self.frames_per_second as f64));
         }
     }
 }
@@ -137,6 +142,20 @@ impl FrameCaptor {
 
     pub fn get_frames_per_second(&self) -> usize {
         self.captured_frames.lock().unwrap().frames_per_second
+    }
+
+    pub fn get_frupp(&self) -> Vec<(f64, f64)> {
+        let frapp = self.captured_frames.lock().unwrap().frupp.clone();
+        let now = SystemTime::now();
+        frapp
+            .iter()
+            .map(|(fps, timestamp)| {
+                (
+                    now.duration_since(*timestamp).unwrap().as_secs() as f64,
+                    *fps,
+                )
+            })
+            .collect()
     }
 
     fn capture(mut rx_sock: CanSocket, frame_state: Arc<Mutex<CapturedFrameState>>) {

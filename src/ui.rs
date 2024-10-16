@@ -15,7 +15,7 @@ use crate::App;
 pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
     let rects = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Percentage(5), Fill(90)])
+        .constraints([Percentage(5), Percentage(75), Percentage(20)])
         .split(f.area());
 
     let keybindings = Title::from(Line::from(vec![
@@ -26,6 +26,8 @@ pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
     ]));
 
     draw_captured_frames(f, app, rects[1], keybindings);
+
+    draw_frames_per_second_chart(f, rects[2], app.frame_captor.get_frupp());
 
     let n_unique_frames = app.frame_captor.get_captured_frames_len();
     let n_total_frames = app.frame_captor.get_total_frame_count();
@@ -106,6 +108,35 @@ fn draw_timestamped_frames(
     f.render_stateful_widget(table, area, &mut app.table_state);
 }
 
+// TODO: move this
+fn draw_frames_per_second_chart(frame: &mut ratatui::Frame, area: Rect, data: Vec<(f64, f64)>) {
+    // oklart om vi behöver några x-labels?
+    // let x_labels = vec![];
+
+    let dataset = vec![Dataset::default()
+        .name("Frames Per Second")
+        .marker(symbols::Marker::Dot)
+        .style(Style::default())
+        .data(&data)];
+
+    let chart = Chart::new(dataset)
+        .block(Block::bordered())
+        .x_axis(
+            Axis::default()
+                .title("Time (Seconds Ago)")
+                .style(Style::default())
+                // Vad för bounds på x-axeln? Måste vi räkna alla timestamps som relativa från Instant::now() när vi ritar?
+                .bounds([0.0, 300.0]),
+        )
+        .y_axis(
+            Axis::default()
+                .title("Frames per Second")
+                .style(Style::default())
+                .bounds([0.0, 5000.0]),
+        );
+
+    frame.render_widget(chart, area);
+}
 
 // TODO: A lil ugly that this is the place responsible for drawing keybindings
 fn draw_captured_frames(f: &mut ratatui::Frame, app: &mut App, area: Rect, keybindings: Title) {
