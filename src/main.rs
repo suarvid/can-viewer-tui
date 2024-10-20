@@ -8,9 +8,9 @@ use crossterm::event::{Event, KeyEventKind};
 
 use ratatui::{prelude::*, widgets::*};
 
+use std::env;
 use std::io;
 use std::process::exit;
-use std::env;
 use std::time::{Duration, Instant};
 
 use crate::frame::FrameCaptor;
@@ -118,7 +118,7 @@ fn main() -> Result<()> {
 
     let app = App::new("CAN Capture", false, frame_captor);
 
-    match run_app(&mut terminal, app, Duration::from_millis(100)) {
+    match run_app(&mut terminal, app, Duration::from_millis(250)) {
         Ok(_) => {}
         Err(e) => eprintln!("Error occured when running application: {}", e),
     }

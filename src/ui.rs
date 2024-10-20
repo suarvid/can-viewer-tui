@@ -1,4 +1,7 @@
+use std::collections::HashSet;
+
 use embedded_can::Frame;
+//use ratatui::crossterm::style::Stylize;
 use ratatui::layout::Constraint::{Fill, Percentage};
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Style};
@@ -25,11 +28,17 @@ pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
         "<C> ".blue().bold(),
     ]));
 
-    draw_captured_frames(f, app, rects[1], keybindings);
+    draw_captured_frames(f, app, rects[1]);
 
-    draw_frames_per_second_chart(f, rects[2], app.frame_captor.get_frupp());
+    draw_frames_per_second_chart(
+        f,
+        rects[2],
+        app.frame_captor.get_frames_per_second_history(),
+        keybindings,
+    );
 
-    let n_unique_frames = app.frame_captor.get_captured_frames_len();
+    let n_unique_frames = app.frame_captor.get_unique_frame_count();
+
     let n_total_frames = app.frame_captor.get_total_frame_count();
     let frames_per_second = app.frame_captor.get_frames_per_second();
 
@@ -77,7 +86,6 @@ fn draw_timestamped_frames(
     rows: Vec<Row<'_>>,
     header_style: Style,
     selected_style: Style,
-    keybindings: Title<'_>,
     f: &mut ratatui::Frame<'_>,
     area: Rect,
     app: &mut App<'_>,
@@ -93,25 +101,21 @@ fn draw_timestamped_frames(
         ],
     )
     .header(get_header_for_timestamped_frames(header_style))
-    .highlight_style(selected_style)
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .border_type(BorderType::Double)
-            .border_set(border::THICK)
-            .title(
-                keybindings
-                    .alignment(Alignment::Center)
-                    .position(block::Position::Bottom),
-            ),
-    );
+    .highlight_style(selected_style);
     f.render_stateful_widget(table, area, &mut app.table_state);
 }
 
-// TODO: move this
-fn draw_frames_per_second_chart(frame: &mut ratatui::Frame, area: Rect, data: Vec<(f64, f64)>) {
-    // oklart om vi behöver några x-labels?
-    // let x_labels = vec![];
+fn draw_frames_per_second_chart(
+    frame: &mut ratatui::Frame,
+    area: Rect,
+    data: Vec<(f64, f64)>,
+    keybindings: Title<'_>,
+) {
+    let x_limit_lo = 0.0;
+    let x_limit_hi = 300.0;
+
+    let y_limit_lo = 0.0;
+    let y_limit_hi = 1000.0;
 
     let dataset = vec![Dataset::default()
         .name("Frames Per Second")
@@ -119,27 +123,48 @@ fn draw_frames_per_second_chart(frame: &mut ratatui::Frame, area: Rect, data: Ve
         .style(Style::default())
         .data(&data)];
 
+    let x_labels = vec![
+        Span::styled(format!("{}", x_limit_lo), Style::default()),
+        Span::styled(format!("{}", x_limit_hi), Style::default()),
+    ];
+
+    let y_labels = vec![
+        Span::styled(format!("{}", y_limit_lo), Style::default()),
+        Span::styled(format!("{}", y_limit_hi), Style::default()),
+    ];
+
     let chart = Chart::new(dataset)
         .block(Block::bordered())
         .x_axis(
             Axis::default()
                 .title("Time (Seconds Ago)")
                 .style(Style::default())
-                // Vad för bounds på x-axeln? Måste vi räkna alla timestamps som relativa från Instant::now() när vi ritar?
-                .bounds([0.0, 300.0]),
+                .labels(x_labels)
+                .bounds([x_limit_lo, x_limit_hi]),
         )
         .y_axis(
             Axis::default()
                 .title("Frames per Second")
                 .style(Style::default())
-                .bounds([0.0, 5000.0]),
+                .labels(y_labels)
+                .bounds([y_limit_lo, y_limit_hi]),
+        )
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Double)
+                .border_set(border::THICK)
+                .title(
+                    keybindings
+                        .alignment(Alignment::Center)
+                        .position(block::Position::Bottom),
+                ),
         );
 
     frame.render_widget(chart, area);
 }
 
-// TODO: A lil ugly that this is the place responsible for drawing keybindings
-fn draw_captured_frames(f: &mut ratatui::Frame, app: &mut App, area: Rect, keybindings: Title) {
+fn draw_captured_frames(f: &mut ratatui::Frame, app: &mut App, area: Rect) {
     let header_style = Style::default().fg(Color::White).bg(Color::Black);
     let selected_style = Style::default().fg(Color::Black).bg(Color::LightYellow);
     let mut rows: Vec<Row> = Vec::new();
@@ -155,15 +180,7 @@ fn draw_captured_frames(f: &mut ratatui::Frame, app: &mut App, area: Rect, keybi
                 let cells = get_row_for_timestamped_frame(frame);
                 rows.push(Row::new(cells).style(Style::default().fg(Color::Black).bg(color)));
             }
-            draw_timestamped_frames(
-                rows,
-                header_style,
-                selected_style,
-                keybindings,
-                f,
-                area,
-                app,
-            );
+            draw_timestamped_frames(rows, header_style, selected_style, f, area, app);
         }
         crate::frame::CapturedFrames::Set(_hash_map) => {
             todo!("Add support for drawing set of counted frames!");
@@ -178,7 +195,7 @@ fn draw_header(
     n_unique_frames: usize,
     frames_per_second: usize,
 ) {
-    let footer = Paragraph::new(Line::from(format!(
+    let header = Paragraph::new(Line::from(format!(
         "Unique Frame IDs: {}, Total Frame Count {}, Frames Per Second: {}",
         n_unique_frames, total_frame_count, frames_per_second
     )))
@@ -189,5 +206,5 @@ fn draw_header(
             .border_type(BorderType::Double),
     );
 
-    f.render_widget(footer, area);
+    f.render_widget(header, area);
 }

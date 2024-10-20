@@ -3,7 +3,7 @@ use embedded_can::nb::Can;
 use embedded_can::Frame;
 use socketcan::{CanFrame, CanSocket, Socket};
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -46,7 +46,7 @@ pub struct CapturedFrameState {
     captured_frames: CapturedFrames,
     total_frame_count: usize,
     frames_per_second: usize,
-    frupp: Vec<(f64, SystemTime)>,
+    frames_per_second_history: Vec<(f64, SystemTime)>,
 }
 
 impl CapturedFrameState {
@@ -55,7 +55,7 @@ impl CapturedFrameState {
             captured_frames: CapturedFrames::List(vec![]),
             total_frame_count: 0,
             frames_per_second: 0,
-            frupp: vec![],
+            frames_per_second_history: vec![],
         }
     }
 
@@ -92,7 +92,8 @@ impl CapturedFrameState {
         if self.total_frame_count > tot_frames_as_of_last_second {
             self.frames_per_second = self.total_frame_count - tot_frames_as_of_last_second;
             let timestamp = SystemTime::now();
-            self.frupp.push((self.frames_per_second as f64, timestamp));
+            self.frames_per_second_history
+                .push((self.frames_per_second as f64, timestamp));
             //.push((timestamp as f64, self.frames_per_second as f64));
         }
     }
@@ -131,9 +132,22 @@ impl FrameCaptor {
     }
 
     // TODO: blir den här clone() för dyr?
+    // Aa, det blir den nog
+    // Går den komma runt på något smidigt sätt?
     pub fn get_captured_frames(&mut self) -> CapturedFrames {
-        let a = self.captured_frames.lock().unwrap();
-        a.captured_frames.clone()
+        let frames = self.captured_frames.lock().unwrap();
+        frames.captured_frames.clone()
+    }
+
+    pub fn get_unique_frame_count(&mut self) -> usize {
+        let frames = self.captured_frames.lock().unwrap();
+        match &frames.captured_frames {
+            crate::frame::CapturedFrames::List(l) => {
+                let b: HashSet<_> = l.iter().map(|f| f.get_numeric_id()).collect();
+                return b.len();
+            }
+            crate::frame::CapturedFrames::Set(_) => todo!("Set of frames not supported!"),
+        };
     }
 
     pub fn get_total_frame_count(&self) -> usize {
@@ -144,8 +158,13 @@ impl FrameCaptor {
         self.captured_frames.lock().unwrap().frames_per_second
     }
 
-    pub fn get_frupp(&self) -> Vec<(f64, f64)> {
-        let frapp = self.captured_frames.lock().unwrap().frupp.clone();
+    pub fn get_frames_per_second_history(&self) -> Vec<(f64, f64)> {
+        let frapp = self
+            .captured_frames
+            .lock()
+            .unwrap()
+            .frames_per_second_history
+            .clone();
         let now = SystemTime::now();
         frapp
             .iter()
