@@ -1,8 +1,5 @@
-use std::collections::HashSet;
-
 use embedded_can::Frame;
-//use ratatui::crossterm::style::Stylize;
-use ratatui::layout::Constraint::{Fill, Percentage};
+use ratatui::layout::Constraint::Percentage;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::symbols::border;
@@ -18,7 +15,7 @@ use crate::App;
 pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
     let rects = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Percentage(5), Percentage(75), Percentage(20)])
+        .constraints([Percentage(5), Percentage(70), Percentage(25)])
         .split(f.area());
 
     let keybindings = Title::from(Line::from(vec![
@@ -35,6 +32,7 @@ pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
         rects[2],
         app.frame_captor.get_frames_per_second_history(),
         keybindings,
+        app.frames_per_second_max,
     );
 
     let n_unique_frames = app.frame_captor.get_unique_frame_count();
@@ -51,7 +49,7 @@ pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
     );
 }
 
-fn get_row_for_timestamped_frame(frame: &TimestampedFrame) -> Vec<Cell<'_>> {
+fn get_row_for_timestamped_frame<'a>(frame: &TimestampedFrame) -> Vec<Cell<'a>> {
     let mut cells = vec![];
     cells.push(Cell::from(Text::from(format!("{}", frame.get_timestamp()))));
     cells.push(Cell::from(Text::from(format!(
@@ -110,15 +108,15 @@ fn draw_frames_per_second_chart(
     area: Rect,
     data: Vec<(f64, f64)>,
     keybindings: Title<'_>,
+    frames_per_second_max: u32,
 ) {
     let x_limit_lo = 0.0;
     let x_limit_hi = 300.0;
 
     let y_limit_lo = 0.0;
-    let y_limit_hi = 1000.0;
+    let y_limit_hi = frames_per_second_max as f64;
 
     let dataset = vec![Dataset::default()
-        .name("Frames Per Second")
         .marker(symbols::Marker::Dot)
         .style(Style::default())
         .data(&data)];
@@ -167,25 +165,63 @@ fn draw_frames_per_second_chart(
 fn draw_captured_frames(f: &mut ratatui::Frame, app: &mut App, area: Rect) {
     let header_style = Style::default().fg(Color::White).bg(Color::Black);
     let selected_style = Style::default().fg(Color::Black).bg(Color::LightYellow);
-    let mut rows: Vec<Row> = Vec::new();
+    //let mut rows: Vec<Row> = Vec::new();
 
-    match app.frame_captor.get_captured_frames() {
-        crate::frame::CapturedFrames::List(vec) => {
-            for (i, frame) in vec.iter().enumerate() {
-                let color = match i % 2 {
-                    0 => app.row_color_main,
-                    _ => app.row_color_alt,
-                };
+    let rows = match app.frame_id_filter {
+        Some(filter) => {
+            let mut rows: Vec<Row> = Vec::new();
+            app.frame_captor
+                .get_captured_frames()
+                .lock()
+                .unwrap()
+                .get_filtered_frames(filter)
+                .iter()
+                .enumerate()
+                .for_each(|(i, frame)| {
+                    let color = match i % 2 {
+                        0 => app.row_color_main,
+                        _ => app.row_color_alt,
+                    };
 
-                let cells = get_row_for_timestamped_frame(frame);
-                rows.push(Row::new(cells).style(Style::default().fg(Color::Black).bg(color)));
+                    let cells = get_row_for_timestamped_frame(&frame);
+                    rows.push(Row::new(cells).style(Style::default().fg(Color::Black).bg(color)));
+                });
+
+            rows
+        }
+        None => {
+            let mut rows: Vec<Row> = Vec::new();
+            match &app
+                .frame_captor
+                .get_captured_frames()
+                .lock()
+                .unwrap()
+                .captured_frames
+            {
+                crate::frame::CapturedFrames::List(vec) => {
+                    vec.iter().cloned().enumerate().for_each(|(i, frame)| {
+                        let color = match i % 2 {
+                            0 => app.row_color_main,
+                            _ => app.row_color_alt,
+                        };
+
+                        let cells = get_row_for_timestamped_frame(&frame);
+                        rows.push(
+                            Row::new(cells).style(Style::default().fg(Color::Black).bg(color)),
+                        );
+                    });
+                    //draw_timestamped_frames(rows, header_style, selected_style, f, area, app);
+                }
+                crate::frame::CapturedFrames::Set(_hash_map) => {
+                    todo!("Add support for drawing set of counted frames!");
+                }
             }
-            draw_timestamped_frames(rows, header_style, selected_style, f, area, app);
+
+            rows
         }
-        crate::frame::CapturedFrames::Set(_hash_map) => {
-            todo!("Add support for drawing set of counted frames!");
-        }
-    }
+    };
+
+    draw_timestamped_frames(rows, header_style, selected_style, f, area, app);
 }
 
 fn draw_header(

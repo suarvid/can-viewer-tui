@@ -1,6 +1,7 @@
 use anyhow::Result;
 use embedded_can::nb::Can;
 use embedded_can::Frame;
+use regex::Regex;
 use socketcan::{CanFrame, CanSocket, Socket};
 
 use std::collections::{HashMap, HashSet};
@@ -43,7 +44,7 @@ pub enum CapturedFrames {
 }
 
 pub struct CapturedFrameState {
-    captured_frames: CapturedFrames,
+    pub captured_frames: CapturedFrames,
     total_frame_count: usize,
     frames_per_second: usize,
     frames_per_second_history: Vec<(f64, SystemTime)>,
@@ -66,6 +67,21 @@ impl CapturedFrameState {
         }
         self.total_frame_count = 0;
         self.frames_per_second = 0;
+    }
+
+    pub fn get_filtered_frames(&mut self, id_pattern: &str) -> Vec<TimestampedFrame> {
+        let id_pattern = Regex::new(id_pattern).unwrap();
+        match &self.captured_frames {
+            CapturedFrames::List(l) => l
+                .iter()
+                .cloned()
+                .filter(|frame| {
+                    let id = frame.get_numeric_id().to_string();
+                    id_pattern.is_match(id.as_str())
+                })
+                .collect(),
+            CapturedFrames::Set(_) => todo!("Frame sets are not yet supported!"),
+        }
     }
 
     fn process_frame(&mut self, rx_frame: CanFrame) {
@@ -94,7 +110,6 @@ impl CapturedFrameState {
             let timestamp = SystemTime::now();
             self.frames_per_second_history
                 .push((self.frames_per_second as f64, timestamp));
-            //.push((timestamp as f64, self.frames_per_second as f64));
         }
     }
 }
@@ -131,12 +146,8 @@ impl FrameCaptor {
         }
     }
 
-    // TODO: blir den här clone() för dyr?
-    // Aa, det blir den nog
-    // Går den komma runt på något smidigt sätt?
-    pub fn get_captured_frames(&mut self) -> CapturedFrames {
-        let frames = self.captured_frames.lock().unwrap();
-        frames.captured_frames.clone()
+    pub fn get_captured_frames(&mut self) -> Arc<Mutex<CapturedFrameState>> {
+        Arc::clone(&self.captured_frames)
     }
 
     pub fn get_unique_frame_count(&mut self) -> usize {

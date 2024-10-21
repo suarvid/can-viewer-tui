@@ -19,6 +19,8 @@ use crate::ui::ui;
 pub struct App<'a> {
     pub table_state: TableState,
     pub title: &'a str,
+    pub frames_per_second_max: u32,
+    pub frame_id_filter: Option<&'a str>,
     pub frame_captor: FrameCaptor,
     pub enhanced_graphics: bool,
     pub row_color_main: Color,
@@ -26,10 +28,17 @@ pub struct App<'a> {
 }
 
 impl<'a> App<'a> {
-    pub fn new(title: &'a str, enhanced_graphics: bool, frame_captor: FrameCaptor) -> Self {
+    pub fn new(
+        title: &'a str,
+        frames_per_second_max: u32,
+        enhanced_graphics: bool,
+        frame_captor: FrameCaptor,
+    ) -> Self {
         App {
             table_state: TableState::default().with_selected(0),
             title,
+            frames_per_second_max,
+            frame_id_filter: None,
             frame_captor,
             enhanced_graphics,
             row_color_main: Color::White,
@@ -106,8 +115,8 @@ fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
-        eprintln!("Usage: {} <can-interface>", args[0]);
-        eprintln!("Example: {} can0", args[0]);
+        eprintln!("Usage: {} <can-interface> <max-frames-per-second>", args[0]);
+        eprintln!("Example: {} can0 1000", args[0]);
         exit(1);
     }
 
@@ -116,9 +125,11 @@ fn main() -> Result<()> {
 
     let frame_captor = FrameCaptor::new(args[1].clone())?;
 
-    let app = App::new("CAN Capture", false, frame_captor);
+    let max_fps: u32 = args[2].parse()?;
 
-    match run_app(&mut terminal, app, Duration::from_millis(250)) {
+    let app = App::new("CAN Capture", max_fps, false, frame_captor);
+
+    match run_app(&mut terminal, app, Duration::from_millis(1000)) {
         Ok(_) => {}
         Err(e) => eprintln!("Error occured when running application: {}", e),
     }

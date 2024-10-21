@@ -13,3 +13,9 @@ ratatui = "0.28.1"
 socketcan = "3.3.0"
 style = "0.1.0"
 anyhow = "1.0.89"
+regex = "1.11.0"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
