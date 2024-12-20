@@ -18,14 +18,14 @@ use crate::ui::ui;
 
 const APP_TITLE: &'static str = "CAN VIEWER TUI";
 const DEFAULT_MAX_FRAMES_PER_SECOND: u32 = 1000;
-const APP_TICK_RATE_MILLISECONDS: u64 = 100;
+const APP_TICK_RATE_MILLISECONDS: u64 = 200;
 const APP_FRAMES_DISPLAYED_MAX_DEFAULT: u32 = 100;
 
 pub struct App<'a> {
     pub table_state: TableState,
     pub title: &'a str,
     pub frames_per_second_max: u32,
-    pub frame_id_filter: Option<&'a str>,
+    pub frame_id_filters: Option<Vec<embedded_can::Id>>,
     pub frame_captor: FrameCaptor,
     pub enhanced_graphics: bool,
     pub row_color_main: Color,
@@ -45,7 +45,7 @@ impl<'a> App<'a> {
             table_state: TableState::default().with_selected(0),
             title,
             frames_per_second_max,
-            frame_id_filter: None,
+            frame_id_filters: None,
             frame_captor,
             enhanced_graphics,
             row_color_main: Color::White,
@@ -88,7 +88,6 @@ impl<'a> App<'a> {
     pub fn select_latest_msg(&mut self) {
         self.table_state.select(Some(0));
     }
-
 }
 
 fn run_app<B: Backend>(
@@ -125,12 +124,42 @@ fn run_app<B: Backend>(
     }
 }
 
+fn parse_filter_ids(raw_ids: Vec<String>) -> Vec<embedded_can::Id> {
+    let mut filter_ids: Vec<embedded_can::Id> = Vec::new();
+
+    for raw_id in raw_ids {
+        match u32::from_str_radix(
+            raw_id
+                .strip_prefix("0x")
+                .expect("Given filter CAN ID must be a hexadecimal string!"),
+            16,
+        ) {
+            Ok(numeric_filter) => {
+                if numeric_filter <= embedded_can::StandardId::MAX.as_raw().into() {
+                    filter_ids.push(embedded_can::Id::Standard(
+                        embedded_can::StandardId::new(numeric_filter as u16)
+                            .expect("Failed to create Standard CAN ID for filtering!"),
+                    ));
+                } else if numeric_filter <= embedded_can::ExtendedId::MAX.as_raw() {
+                    filter_ids.push(embedded_can::Id::Extended(
+                        embedded_can::ExtendedId::new(numeric_filter)
+                            .expect("Failed to create Extended CAN ID for filtering"),
+                    ))
+                }
+            }
+            Err(_) => panic!("Failed to parse filter CAN id: {}", raw_id),
+        }
+    }
+
+    filter_ids
+}
+
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
         eprintln!(
-            "Usage: {} <can-interface> [max-frames-per-second] [...] = optional",
+            "Usage: {} <can-interface> [max-frames-per-second] [inclusive-filter-can-ids] [...] = optional",
             args[0]
         );
         eprintln!("Example: {} can0 1000", args[0]);
@@ -142,15 +171,22 @@ fn main() -> Result<()> {
 
     let frame_captor = FrameCaptor::new(args[1].clone())?;
 
-    let max_fps: u32 = args[2].parse().unwrap_or(DEFAULT_MAX_FRAMES_PER_SECOND);
+    let max_fps: u32 = match args.get(2) {
+        Some(max_frames_per_second) => max_frames_per_second.parse().unwrap_or(DEFAULT_MAX_FRAMES_PER_SECOND),
+        None => DEFAULT_MAX_FRAMES_PER_SECOND,
+    };
 
-    let app = App::new(
+    let mut app = App::new(
         APP_TITLE,
         max_fps,
         APP_FRAMES_DISPLAYED_MAX_DEFAULT,
         false,
         frame_captor,
     );
+
+    if args.len() > 3 {
+        app.frame_id_filters = Some(parse_filter_ids(args[3..].to_vec()));
+    }
 
     match run_app(
         &mut terminal,
