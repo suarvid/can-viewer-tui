@@ -23,6 +23,8 @@ pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
         "<Q> ".blue().bold(),
         " Clear Frame Info ".into(),
         "<C> ".blue().bold(),
+        " Go To Latest Frame".into(),
+        "<G> ".blue().bold(),
     ]));
 
     draw_captured_frames(f, app, rects[1]);
@@ -51,6 +53,7 @@ pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
 
 fn get_row_for_timestamped_frame<'a>(frame: &TimestampedFrame) -> Vec<Cell<'a>> {
     let mut cells = vec![];
+    cells.push(Cell::from(Text::from(format!("{}", frame.frame_number))));
     cells.push(Cell::from(Text::from(format!("{}", frame.get_timestamp()))));
     cells.push(Cell::from(Text::from(format!(
         "0x{:x}",
@@ -73,7 +76,7 @@ fn get_row_for_timestamped_frame<'a>(frame: &TimestampedFrame) -> Vec<Cell<'a>> 
 }
 
 fn get_header_for_timestamped_frames(header_style: Style) -> Row<'static> {
-    ["Timestamp", "ID", "DLC", "Extended", "Data"]
+    ["Frame #", "Timestamp", "ID", "DLC", "Extended", "Data"]
         .into_iter()
         .map(Cell::from)
         .collect::<Row>()
@@ -92,10 +95,12 @@ fn draw_timestamped_frames(
         rows,
         [
             Constraint::Fill(1),
-            Constraint::Percentage(5),
-            Constraint::Percentage(10),
-            Constraint::Percentage(5),
             Constraint::Fill(1),
+            Constraint::Fill(1),
+            Constraint::Fill(1),
+            Constraint::Fill(1),
+            Constraint::Fill(1),
+            Constraint::Percentage(25),
         ],
     )
     .header(get_header_for_timestamped_frames(header_style))
@@ -165,7 +170,6 @@ fn draw_frames_per_second_chart(
 fn draw_captured_frames(f: &mut ratatui::Frame, app: &mut App, area: Rect) {
     let header_style = Style::default().fg(Color::White).bg(Color::Black);
     let selected_style = Style::default().fg(Color::Black).bg(Color::LightYellow);
-    //let mut rows: Vec<Row> = Vec::new();
 
     let rows = match app.frame_id_filter {
         Some(filter) => {
@@ -199,7 +203,7 @@ fn draw_captured_frames(f: &mut ratatui::Frame, app: &mut App, area: Rect) {
                 .captured_frames
             {
                 crate::frame::CapturedFrames::List(vec) => {
-                    vec.iter().cloned().enumerate().for_each(|(i, frame)| {
+                    vec.iter().rev().take(100).cloned().enumerate().for_each(|(i, frame)| {
                         let color = match i % 2 {
                             0 => app.row_color_main,
                             _ => app.row_color_alt,
@@ -210,7 +214,6 @@ fn draw_captured_frames(f: &mut ratatui::Frame, app: &mut App, area: Rect) {
                             Row::new(cells).style(Style::default().fg(Color::Black).bg(color)),
                         );
                     });
-                    //draw_timestamped_frames(rows, header_style, selected_style, f, area, app);
                 }
                 crate::frame::CapturedFrames::Set(_hash_map) => {
                     todo!("Add support for drawing set of counted frames!");

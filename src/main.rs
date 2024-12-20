@@ -16,6 +16,11 @@ use std::time::{Duration, Instant};
 use crate::frame::FrameCaptor;
 use crate::ui::ui;
 
+const APP_TITLE: &'static str = "CAN VIEWER TUI";
+const DEFAULT_MAX_FRAMES_PER_SECOND: u32 = 1000;
+const APP_TICK_RATE_MILLISECONDS: u64 = 100;
+const APP_FRAMES_DISPLAYED_MAX_DEFAULT: u32 = 100;
+
 pub struct App<'a> {
     pub table_state: TableState,
     pub title: &'a str,
@@ -25,12 +30,14 @@ pub struct App<'a> {
     pub enhanced_graphics: bool,
     pub row_color_main: Color,
     pub row_color_alt: Color,
+    pub frames_displayed_max: u32,
 }
 
 impl<'a> App<'a> {
     pub fn new(
         title: &'a str,
         frames_per_second_max: u32,
+        frames_displayed_max: u32,
         enhanced_graphics: bool,
         frame_captor: FrameCaptor,
     ) -> Self {
@@ -43,6 +50,7 @@ impl<'a> App<'a> {
             enhanced_graphics,
             row_color_main: Color::White,
             row_color_alt: Color::Gray,
+            frames_displayed_max,
         }
     }
 
@@ -76,6 +84,11 @@ impl<'a> App<'a> {
 
         self.table_state.select(Some(i));
     }
+
+    pub fn select_latest_msg(&mut self) {
+        self.table_state.select(Some(0));
+    }
+
 }
 
 fn run_app<B: Backend>(
@@ -99,6 +112,7 @@ fn run_app<B: Backend>(
                         }
                         KeyCode::Char('j') | KeyCode::Down => app.select_next_msg(),
                         KeyCode::Char('k') | KeyCode::Up => app.select_prev_msg(),
+                        KeyCode::Char('t') => app.select_latest_msg(),
                         _ => {}
                     }
                 }
@@ -108,14 +122,17 @@ fn run_app<B: Backend>(
         if last_tick.elapsed() >= tick_rate {
             last_tick = Instant::now();
         }
-    } // loop
+    }
 }
 
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
-        eprintln!("Usage: {} <can-interface> <max-frames-per-second>", args[0]);
+        eprintln!(
+            "Usage: {} <can-interface> [max-frames-per-second] [...] = optional",
+            args[0]
+        );
         eprintln!("Example: {} can0 1000", args[0]);
         exit(1);
     }
@@ -125,11 +142,21 @@ fn main() -> Result<()> {
 
     let frame_captor = FrameCaptor::new(args[1].clone())?;
 
-    let max_fps: u32 = args[2].parse()?;
+    let max_fps: u32 = args[2].parse().unwrap_or(DEFAULT_MAX_FRAMES_PER_SECOND);
 
-    let app = App::new("CAN Capture", max_fps, false, frame_captor);
+    let app = App::new(
+        APP_TITLE,
+        max_fps,
+        APP_FRAMES_DISPLAYED_MAX_DEFAULT,
+        false,
+        frame_captor,
+    );
 
-    match run_app(&mut terminal, app, Duration::from_millis(1000)) {
+    match run_app(
+        &mut terminal,
+        app,
+        Duration::from_millis(APP_TICK_RATE_MILLISECONDS),
+    ) {
         Ok(_) => {}
         Err(e) => eprintln!("Error occured when running application: {}", e),
     }

@@ -12,13 +12,15 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 pub struct TimestampedFrame {
     pub frame: CanFrame,
     timestamp: SystemTime,
+    pub frame_number: u64,
 }
 
 impl TimestampedFrame {
-    pub fn new(frame: CanFrame) -> Self {
+    pub fn new(frame: CanFrame, frame_number: u64) -> Self {
         Self {
             frame,
             timestamp: SystemTime::now(),
+            frame_number,
         }
     }
 
@@ -84,10 +86,10 @@ impl CapturedFrameState {
         }
     }
 
-    fn process_frame(&mut self, rx_frame: CanFrame) {
+    fn process_frame(&mut self, rx_frame: CanFrame, frame_number: u64) {
         match &mut self.captured_frames {
             CapturedFrames::List(l) => {
-                l.push(TimestampedFrame::new(rx_frame));
+                l.push(TimestampedFrame::new(rx_frame, frame_number));
             }
             CapturedFrames::Set(_s) => {
                 todo!("Set of frames not yet supported!")
@@ -191,10 +193,12 @@ impl FrameCaptor {
     fn capture(mut rx_sock: CanSocket, frame_state: Arc<Mutex<CapturedFrameState>>) {
         let mut running_second_timestamp = Instant::now();
         let mut tot_frames_as_of_last_second = 0;
+        let mut frame_number: u64 = 0;
 
         loop {
             if let Ok(rx_frame) = rx_sock.receive() {
-                frame_state.lock().unwrap().process_frame(rx_frame);
+                frame_state.lock().unwrap().process_frame(rx_frame, frame_number);
+                frame_number += 1;
             }
 
             if running_second_timestamp.elapsed().as_secs() >= 1 {
