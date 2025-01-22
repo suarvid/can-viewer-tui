@@ -1,4 +1,6 @@
+mod draw_frame_table;
 mod frame;
+mod frame_filter;
 mod ui;
 
 use anyhow::Result;
@@ -7,6 +9,7 @@ use clap::Parser;
 use crossterm::event::{self, KeyCode};
 use crossterm::event::{Event, KeyEventKind};
 
+use frame_filter::FrameIdFilter;
 use ratatui::{prelude::*, widgets::*};
 
 use std::io;
@@ -41,13 +44,13 @@ pub struct App<'a> {
     pub table_state: TableState,
     pub title: &'a str,
     pub frames_per_second_max: u32,
-    pub frame_id_filters: Option<Vec<embedded_can::Id>>,
+    pub frame_id_filter: Option<FrameIdFilter>,
     pub frame_captor: FrameCaptor,
     pub enhanced_graphics: bool,
     pub row_color_main: Color,
     pub row_color_alt: Color,
     pub frames_displayed_max: u32,
-    pub draw_frame_table: fn(&mut ratatui::Frame, app: &mut App, area: Rect)
+    pub draw_frame_table: fn(&mut ratatui::Frame, app: &mut App, area: Rect),
 }
 
 impl<'a> App<'a> {
@@ -62,13 +65,13 @@ impl<'a> App<'a> {
             table_state: TableState::default().with_selected(0),
             title,
             frames_per_second_max,
-            frame_id_filters: None,
+            frame_id_filter: None,
             frame_captor,
             enhanced_graphics,
             row_color_main: Color::White,
             row_color_alt: Color::Gray,
             frames_displayed_max,
-            draw_frame_table: ui::draw_captured_frames,
+            draw_frame_table: draw_frame_table::draw_captured_frames,
         }
     }
 
@@ -188,8 +191,11 @@ fn main() -> Result<()> {
         frame_captor,
     );
 
-    if let Some(alibaba) = args.filter_frame_ids {
-        app.frame_id_filters = Some(parse_filter_ids(alibaba));
+    if let Some(filter_ids) = args.filter_frame_ids {
+        app.frame_id_filter = Some(FrameIdFilter {
+            ids: parse_filter_ids(filter_ids),
+            filter_callback: frame_filter::filter_frame_on_ids,
+        })
     }
 
     match run_app(

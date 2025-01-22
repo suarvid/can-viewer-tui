@@ -1,15 +1,10 @@
-use embedded_can::Frame;
 use ratatui::layout::Constraint::Percentage;
-use ratatui::layout::{Constraint, Layout, Rect};
-use ratatui::style::{Color, Style};
+use ratatui::layout::{Layout, Rect};
+use ratatui::style::Style;
 use ratatui::symbols::border;
-use ratatui::text::Text;
 use ratatui::widgets::block::Title;
-use ratatui::widgets::Cell;
 use ratatui::{prelude::*, widgets::*};
-use socketcan::CanFrame;
 
-use crate::frame::TimestampedFrame;
 use crate::App;
 
 pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
@@ -49,62 +44,6 @@ pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
         n_unique_frames,
         frames_per_second,
     );
-}
-
-fn get_row_for_timestamped_frame<'a>(frame: &TimestampedFrame) -> Vec<Cell<'a>> {
-    let mut cells = vec![];
-    cells.push(Cell::from(Text::from(format!("{}", frame.frame_number))));
-    cells.push(Cell::from(Text::from(format!("{}", frame.get_timestamp()))));
-    cells.push(Cell::from(Text::from(format!(
-        "0x{:x}",
-        frame.get_numeric_id()
-    ))));
-    cells.push(Cell::from(Text::from(format!(
-        "{:?}",
-        CanFrame::dlc(&frame.frame)
-    ))));
-    cells.push(Cell::from(Text::from(format!(
-        "{}",
-        CanFrame::is_extended(&frame.frame)
-    ))));
-    cells.push(Cell::from(Text::from(format!(
-        "{:x?}",
-        CanFrame::data(&frame.frame)
-    ))));
-
-    cells
-}
-
-fn get_header_for_timestamped_frames(header_style: Style) -> Row<'static> {
-    ["Frame #", "Timestamp", "ID", "DLC", "Extended", "Data (hex)"]
-        .into_iter()
-        .map(Cell::from)
-        .collect::<Row>()
-        .style(header_style)
-}
-
-fn draw_timestamped_frames(
-    rows: Vec<Row<'_>>,
-    header_style: Style,
-    selected_style: Style,
-    f: &mut ratatui::Frame<'_>,
-    area: Rect,
-    app: &mut App<'_>,
-) {
-    let table = Table::new(
-        rows,
-        [
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(100),
-        ],
-    )
-    .header(get_header_for_timestamped_frames(header_style))
-    .highlight_style(selected_style);
-    f.render_stateful_widget(table, area, &mut app.table_state);
 }
 
 fn draw_frames_per_second_chart(
@@ -164,52 +103,6 @@ fn draw_frames_per_second_chart(
         );
 
     frame.render_widget(chart, area);
-}
-
-pub fn draw_captured_frames(f: &mut ratatui::Frame, app: &mut App, area: Rect) {
-    let header_style = Style::default().fg(Color::White).bg(Color::Black);
-    let selected_style = Style::default().fg(Color::Black).bg(Color::LightYellow);
-
-    let frame_id_filter: Box<dyn Fn(&&TimestampedFrame) -> bool> = match &app.frame_id_filters {
-        Some(filter_ids) => Box::new(|f: &&TimestampedFrame| {
-            filter_ids
-                .iter()
-                .any(|filter_id| *filter_id == f.frame.id())
-        }),
-        None => Box::new(|_: &&TimestampedFrame| true),
-    };
-
-    let mut rows: Vec<Row> = Vec::new();
-    match &app
-        .frame_captor
-        .get_captured_frames()
-        .lock()
-        .unwrap()
-        .captured_frames
-    {
-        crate::frame::CapturedFrames::List(vec) => {
-            vec.iter()
-                .rev()
-                .filter(frame_id_filter)
-                .take(100)
-                .cloned()
-                .enumerate()
-                .for_each(|(i, frame)| {
-                    let color = match i % 2 {
-                        0 => app.row_color_main,
-                        _ => app.row_color_alt,
-                    };
-
-                    let cells = get_row_for_timestamped_frame(&frame);
-                    rows.push(Row::new(cells).style(Style::default().fg(Color::Black).bg(color)));
-                });
-
-            draw_timestamped_frames(rows, header_style, selected_style, f, area, app);
-        }
-        crate::frame::CapturedFrames::Set(_hash_map) => {
-            todo!("Add support for drawing set of counted frames!");
-        }
-    }
 }
 
 fn draw_header(

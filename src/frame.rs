@@ -197,7 +197,10 @@ impl FrameCaptor {
 
         loop {
             if let Ok(rx_frame) = rx_sock.receive() {
-                frame_state.lock().unwrap().process_frame(rx_frame, frame_number);
+                frame_state
+                    .lock()
+                    .unwrap()
+                    .process_frame(rx_frame, frame_number);
                 frame_number += 1;
             }
 
