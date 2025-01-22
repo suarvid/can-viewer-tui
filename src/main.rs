@@ -18,7 +18,7 @@ use std::time::{Duration, Instant};
 use crate::frame::FrameCaptor;
 use crate::ui::ui;
 
-const APP_TITLE: &'static str = "CAN VIEWER TUI";
+const APP_TITLE: &str = "CAN VIEWER TUI";
 const DEFAULT_MAX_FRAMES_PER_SECOND: u32 = 1000;
 const APP_TICK_RATE_MILLISECONDS: u64 = 100;
 // Constant-size table to avoid performance degrading as more frames are captured

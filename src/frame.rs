@@ -67,6 +67,12 @@ pub struct CapturedFrameState {
     frames_per_second_history: Vec<(f64, SystemTime)>,
 }
 
+impl Default for CapturedFrameState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CapturedFrameState {
     pub fn new() -> Self {
         Self {

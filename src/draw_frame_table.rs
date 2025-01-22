@@ -134,19 +134,15 @@ pub fn draw_counted_frame_set(f: &mut ratatui::Frame, app: &mut App, area: Rect)
 
     let frame_set = &captured_frames.lock().unwrap().captured_frames_set;
 
-    frame_set
-        .values()
-        .into_iter()
-        .enumerate()
-        .for_each(|(i, frame)| {
-            let color = match i % 2 {
-                0 => app.row_color_main,
-                _ => app.row_color_alt,
-            };
+    frame_set.values().enumerate().for_each(|(i, frame)| {
+        let color = match i % 2 {
+            0 => app.row_color_main,
+            _ => app.row_color_alt,
+        };
 
-            let cells = get_row_for_counted_frame_set(frame);
-            rows.push(Row::new(cells).style(Style::default().fg(Color::Black).bg(color)))
-        });
+        let cells = get_row_for_counted_frame_set(frame);
+        rows.push(Row::new(cells).style(Style::default().fg(Color::Black).bg(color)))
+    });
 
     draw_frame_set(rows, header_style, selected_style, f, area, app);
 }
@@ -173,7 +169,7 @@ pub fn draw_timestamped_frame_table(f: &mut ratatui::Frame, app: &mut App, area:
                     _ => app.row_color_alt,
                 };
 
-                let cells = get_row_for_timestamped_frame(&frame);
+                let cells = get_row_for_timestamped_frame(frame);
                 rows.push(Row::new(cells).style(Style::default().fg(Color::Black).bg(color)));
             });
     } else {
@@ -188,7 +184,7 @@ pub fn draw_timestamped_frame_table(f: &mut ratatui::Frame, app: &mut App, area:
                     _ => app.row_color_alt,
                 };
 
-                let cells = get_row_for_timestamped_frame(&frame);
+                let cells = get_row_for_timestamped_frame(frame);
                 rows.push(Row::new(cells).style(Style::default().fg(Color::Black).bg(color)));
             });
     }
