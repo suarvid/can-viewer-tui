@@ -23,8 +23,8 @@ pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
         "<Q> ".blue().bold(),
         " Clear Frame Info ".into(),
         "<C> ".blue().bold(),
-        " Go To Latest Frame".into(),
-        "<G> ".blue().bold(),
+        " To Latest Frame".into(),
+        "<T> ".blue().bold(),
     ]));
 
     draw_captured_frames(f, app, rects[1]);
@@ -68,7 +68,7 @@ fn get_row_for_timestamped_frame<'a>(frame: &TimestampedFrame) -> Vec<Cell<'a>> 
         CanFrame::is_extended(&frame.frame)
     ))));
     cells.push(Cell::from(Text::from(format!(
-        "{:?}",
+        "{:x?}",
         CanFrame::data(&frame.frame)
     ))));
 
@@ -76,7 +76,7 @@ fn get_row_for_timestamped_frame<'a>(frame: &TimestampedFrame) -> Vec<Cell<'a>> 
 }
 
 fn get_header_for_timestamped_frames(header_style: Style) -> Row<'static> {
-    ["Frame #", "Timestamp", "ID", "DLC", "Extended", "Data"]
+    ["Frame #", "Timestamp", "ID", "DLC", "Extended", "Data (hex)"]
         .into_iter()
         .map(Cell::from)
         .collect::<Row>()

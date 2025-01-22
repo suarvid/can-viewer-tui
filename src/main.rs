@@ -3,14 +3,13 @@ mod ui;
 
 use anyhow::Result;
 
+use clap::Parser;
 use crossterm::event::{self, KeyCode};
 use crossterm::event::{Event, KeyEventKind};
 
 use ratatui::{prelude::*, widgets::*};
 
-use std::env;
 use std::io;
-use std::process::exit;
 use std::time::{Duration, Instant};
 
 use crate::frame::FrameCaptor;
@@ -19,7 +18,24 @@ use crate::ui::ui;
 const APP_TITLE: &'static str = "CAN VIEWER TUI";
 const DEFAULT_MAX_FRAMES_PER_SECOND: u32 = 1000;
 const APP_TICK_RATE_MILLISECONDS: u64 = 200;
-const APP_FRAMES_DISPLAYED_MAX_DEFAULT: u32 = 100;
+const APP_FRAMES_DISPLAYED_MAX_DEFAULT: u32 = 500;
+
+#[derive(Parser, Debug)]
+struct Args {
+    /// Which can interface to listen to
+    #[arg(short, long)]
+    can_interface: String,
+    /// CAN frame ID's to include in the resulting frame list, as hexadecimal values
+    /// If no ID's are given, all frames are included
+    #[arg(short, long, default_value = None, value_parser, num_args = 1.., value_delimiter = ' ')]
+    filter_frame_ids: Option<Vec<String>>,
+    /// Max-value of the frames per second graph
+    #[arg(short, long, default_value_t = DEFAULT_MAX_FRAMES_PER_SECOND)]
+    max_frames_per_second_graph: u32,
+    /// Maximum number of frames shown in the table at the same time
+    #[arg(long, default_value_t = APP_FRAMES_DISPLAYED_MAX_DEFAULT)]
+    frame_table_size: u32,
+}
 
 pub struct App<'a> {
     pub table_state: TableState,
@@ -155,37 +171,23 @@ fn parse_filter_ids(raw_ids: Vec<String>) -> Vec<embedded_can::Id> {
 }
 
 fn main() -> Result<()> {
-    let args: Vec<String> = env::args().collect();
-
-    if args.len() < 2 {
-        eprintln!(
-            "Usage: {} <can-interface> [max-frames-per-second] [inclusive-filter-can-ids] [...] = optional",
-            args[0]
-        );
-        eprintln!("Example: {} can0 1000", args[0]);
-        exit(1);
-    }
+    let args = Args::parse();
 
     let mut terminal = ratatui::init();
     terminal.clear()?;
 
-    let frame_captor = FrameCaptor::new(args[1].clone())?;
-
-    let max_fps: u32 = match args.get(2) {
-        Some(max_frames_per_second) => max_frames_per_second.parse().unwrap_or(DEFAULT_MAX_FRAMES_PER_SECOND),
-        None => DEFAULT_MAX_FRAMES_PER_SECOND,
-    };
+    let frame_captor = FrameCaptor::new(args.can_interface.clone())?;
 
     let mut app = App::new(
         APP_TITLE,
-        max_fps,
-        APP_FRAMES_DISPLAYED_MAX_DEFAULT,
+        args.max_frames_per_second_graph,
+        args.frame_table_size,
         false,
         frame_captor,
     );
 
-    if args.len() > 3 {
-        app.frame_id_filters = Some(parse_filter_ids(args[3..].to_vec()));
+    if let Some(alibaba) = args.filter_frame_ids {
+        app.frame_id_filters = Some(parse_filter_ids(alibaba));
     }
 
     match run_app(
