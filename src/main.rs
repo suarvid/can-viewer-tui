@@ -25,11 +25,12 @@ const APP_TICK_RATE_MILLISECONDS: u64 = 100;
 const APP_FRAMES_DISPLAYED_MAX_DEFAULT: usize = 500;
 
 #[derive(Parser, Debug)]
+#[command(arg_required_else_help = true)]
 struct Args {
     /// Which can interface to listen to
     #[arg(short, long)]
     can_interface: String,
-    /// CAN frame ID's to include in the resulting frame list, as hexadecimal values
+    /// CAN frame ID's to include in the resulting frame list, as hexadecimal values.
     /// If no ID's are given, all frames are included
     #[arg(short, long, default_value = None, value_parser, num_args = 1.., value_delimiter = ' ')]
     filter_frame_ids: Option<Vec<String>>,

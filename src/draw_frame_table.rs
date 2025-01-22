@@ -115,7 +115,6 @@ fn draw_frame_set(
             Constraint::Percentage(10),
             Constraint::Percentage(10),
             Constraint::Percentage(10),
-            Constraint::Percentage(10),
             Constraint::Percentage(100),
         ],
     )
