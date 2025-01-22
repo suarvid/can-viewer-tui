@@ -41,7 +41,13 @@ struct Args {
     frame_table_size: usize,
 }
 
+pub enum LoremIpsum {
+    FrameList,
+    FrameSet,
+}
+
 pub struct App<'a> {
+    pub lorem_ipsum: LoremIpsum,
     pub table_state: TableState,
     pub title: &'a str,
     pub frames_per_second_max: u32,
@@ -63,6 +69,7 @@ impl<'a> App<'a> {
         frame_captor: FrameCaptor,
     ) -> Self {
         App {
+            lorem_ipsum: LoremIpsum::FrameList,
             table_state: TableState::default().with_selected(0),
             title,
             frames_per_second_max,
@@ -72,14 +79,21 @@ impl<'a> App<'a> {
             row_color_main: Color::White,
             row_color_alt: Color::Gray,
             frames_displayed_max,
-            draw_frame_table: draw_frame_table::draw_captured_frames,
+            draw_frame_table: draw_frame_table::draw_timestamped_frame_table,
+        }
+    }
+
+    fn get_frame_table_len(&mut self) -> usize {
+        match self.lorem_ipsum {
+            LoremIpsum::FrameList => self.frame_captor.get_captured_frames_list_len(),
+            LoremIpsum::FrameSet => self.frame_captor.get_captured_frames_set_len(),
         }
     }
 
     pub fn select_next_msg(&mut self) {
         let i = match self.table_state.selected() {
             Some(i) => {
-                let len = self.frame_captor.get_captured_frames_len();
+                let len = self.get_frame_table_len();
                 if i >= len - 1 {
                     0
                 } else {
@@ -92,7 +106,7 @@ impl<'a> App<'a> {
     }
 
     pub fn select_prev_msg(&mut self) {
-        let len = self.frame_captor.get_captured_frames_len();
+        let len = self.get_frame_table_len();
         let i = match self.table_state.selected() {
             Some(i) => {
                 if i == 0 {
@@ -109,6 +123,19 @@ impl<'a> App<'a> {
 
     pub fn select_latest_msg(&mut self) {
         self.table_state.select(Some(0));
+    }
+
+    pub fn toggle_frame_table_ui(&mut self) {
+        match self.lorem_ipsum {
+            LoremIpsum::FrameList => {
+                self.lorem_ipsum = LoremIpsum::FrameSet;
+                self.draw_frame_table = draw_frame_table::draw_captured_frame_set;
+            }
+            LoremIpsum::FrameSet => {
+                self.lorem_ipsum = LoremIpsum::FrameList;
+                self.draw_frame_table = draw_frame_table::draw_timestamped_frame_table;
+            }
+        }
     }
 }
 
@@ -134,6 +161,7 @@ fn run_app<B: Backend>(
                         KeyCode::Char('j') | KeyCode::Down => app.select_next_msg(),
                         KeyCode::Char('k') | KeyCode::Up => app.select_prev_msg(),
                         KeyCode::Char('t') => app.select_latest_msg(),
+                        KeyCode::Char('v') => app.toggle_frame_table_ui(),
                         _ => {}
                     }
                 }

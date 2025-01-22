@@ -1,10 +1,9 @@
 use anyhow::Result;
 use embedded_can::nb::Can;
 use embedded_can::Frame;
-use regex::Regex;
 use socketcan::{CanFrame, CanSocket, Socket};
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -39,14 +38,30 @@ impl TimestampedFrame {
     }
 }
 
-#[derive(Clone)]
-pub enum CapturedFrames {
-    List(Vec<TimestampedFrame>),
-    Set(HashMap<u32, CanFrame>),
+pub struct CountedFrame {
+    pub frame: CanFrame,
+    pub capture_count: usize,
+}
+
+impl CountedFrame {
+    pub fn new(frame: CanFrame) -> Self {
+        Self {
+            frame,
+            capture_count: 0,
+        }
+    }
+
+    pub fn with_capture_count(frame: CanFrame, capture_count: usize) -> Self {
+        Self {
+            frame,
+            capture_count,
+        }
+    }
 }
 
 pub struct CapturedFrameState {
-    pub captured_frames: CapturedFrames,
+    pub captured_frames_list: Vec<TimestampedFrame>,
+    pub captured_frames_set: HashMap<u32, CountedFrame>,
     total_frame_count: usize,
     frames_per_second: usize,
     frames_per_second_history: Vec<(f64, SystemTime)>,
@@ -55,7 +70,8 @@ pub struct CapturedFrameState {
 impl CapturedFrameState {
     pub fn new() -> Self {
         Self {
-            captured_frames: CapturedFrames::List(vec![]),
+            captured_frames_list: vec![],
+            captured_frames_set: HashMap::new(),
             total_frame_count: 0,
             frames_per_second: 0,
             frames_per_second_history: vec![],
@@ -63,38 +79,28 @@ impl CapturedFrameState {
     }
 
     pub fn clear_captured_frames(&mut self) {
-        match &mut self.captured_frames {
-            CapturedFrames::List(l) => l.clear(),
-            CapturedFrames::Set(s) => s.clear(),
-        }
+        self.captured_frames_list.clear();
+        self.captured_frames_set.clear();
         self.total_frame_count = 0;
         self.frames_per_second = 0;
     }
 
-    pub fn get_filtered_frames(&mut self, id_pattern: &str) -> Vec<TimestampedFrame> {
-        let id_pattern = Regex::new(id_pattern).unwrap();
-        match &self.captured_frames {
-            CapturedFrames::List(l) => l
-                .iter()
-                .cloned()
-                .filter(|frame| {
-                    let id = frame.get_numeric_id().to_string();
-                    id_pattern.is_match(id.as_str())
-                })
-                .collect(),
-            CapturedFrames::Set(_) => todo!("Frame sets are not yet supported!"),
-        }
-    }
-
     fn process_frame(&mut self, rx_frame: CanFrame, frame_number: u64) {
-        match &mut self.captured_frames {
-            CapturedFrames::List(l) => {
-                l.push(TimestampedFrame::new(rx_frame, frame_number));
-            }
-            CapturedFrames::Set(_s) => {
-                todo!("Set of frames not yet supported!")
-            }
-        }
+        self.captured_frames_list
+            .push(TimestampedFrame::new(rx_frame, frame_number));
+
+        let old_capture_count = self
+            .captured_frames_set
+            .entry(socketcan::Frame::raw_id(&rx_frame))
+            .or_insert(
+                CountedFrame::new(rx_frame), //(rx_frame, 0)
+            )
+            .capture_count;
+
+        self.captured_frames_set.insert(
+            socketcan::Frame::raw_id(&rx_frame),
+            CountedFrame::with_capture_count(rx_frame, old_capture_count + 1),
+        );
 
         self.total_frame_count += 1;
     }
@@ -141,11 +147,20 @@ impl FrameCaptor {
         b.clear_captured_frames();
     }
 
-    pub fn get_captured_frames_len(&mut self) -> usize {
-        match &self.captured_frames.lock().unwrap().captured_frames {
-            CapturedFrames::List(l) => l.len(),
-            CapturedFrames::Set(s) => s.len(),
-        }
+    pub fn get_captured_frames_list_len(&mut self) -> usize {
+        self.captured_frames
+            .lock()
+            .unwrap()
+            .captured_frames_list
+            .len()
+    }
+
+    pub fn get_captured_frames_set_len(&mut self) -> usize {
+        self.captured_frames
+            .lock()
+            .unwrap()
+            .captured_frames_set
+            .len()
     }
 
     pub fn get_captured_frames(&mut self) -> Arc<Mutex<CapturedFrameState>> {
@@ -154,13 +169,7 @@ impl FrameCaptor {
 
     pub fn get_unique_frame_count(&mut self) -> usize {
         let frames = self.captured_frames.lock().unwrap();
-        match &frames.captured_frames {
-            crate::frame::CapturedFrames::List(l) => {
-                let b: HashSet<_> = l.iter().map(|f| f.get_numeric_id()).collect();
-                return b.len();
-            }
-            crate::frame::CapturedFrames::Set(_) => todo!("Set of frames not supported!"),
-        };
+        frames.captured_frames_set.len()
     }
 
     pub fn get_total_frame_count(&self) -> usize {

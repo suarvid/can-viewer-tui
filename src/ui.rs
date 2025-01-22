@@ -18,8 +18,10 @@ pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
         "<Q> ".blue().bold(),
         " Clear Frame Info ".into(),
         "<C> ".blue().bold(),
-        " To Latest Frame".into(),
+        " To Top of Table ".into(),
         "<T> ".blue().bold(),
+        " Toggle Table View ".into(),
+        "<V> ".blue().bold(),
     ]));
 
     (app.draw_frame_table)(f, app, rects[1]);
