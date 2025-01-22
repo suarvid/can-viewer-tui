@@ -20,8 +20,9 @@ use crate::ui::ui;
 
 const APP_TITLE: &'static str = "CAN VIEWER TUI";
 const DEFAULT_MAX_FRAMES_PER_SECOND: u32 = 1000;
-const APP_TICK_RATE_MILLISECONDS: u64 = 200;
-const APP_FRAMES_DISPLAYED_MAX_DEFAULT: u32 = 500;
+const APP_TICK_RATE_MILLISECONDS: u64 = 100;
+// Constant-size table to avoid performance degrading as more frames are captured
+const APP_FRAMES_DISPLAYED_MAX_DEFAULT: usize = 500;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -37,7 +38,7 @@ struct Args {
     max_frames_per_second_graph: u32,
     /// Maximum number of frames shown in the table at the same time
     #[arg(long, default_value_t = APP_FRAMES_DISPLAYED_MAX_DEFAULT)]
-    frame_table_size: u32,
+    frame_table_size: usize,
 }
 
 pub struct App<'a> {
@@ -49,7 +50,7 @@ pub struct App<'a> {
     pub enhanced_graphics: bool,
     pub row_color_main: Color,
     pub row_color_alt: Color,
-    pub frames_displayed_max: u32,
+    pub frames_displayed_max: usize,
     pub draw_frame_table: fn(&mut ratatui::Frame, app: &mut App, area: Rect),
 }
 
@@ -57,7 +58,7 @@ impl<'a> App<'a> {
     pub fn new(
         title: &'a str,
         frames_per_second_max: u32,
-        frames_displayed_max: u32,
+        frames_displayed_max: usize,
         enhanced_graphics: bool,
         frame_captor: FrameCaptor,
     ) -> Self {

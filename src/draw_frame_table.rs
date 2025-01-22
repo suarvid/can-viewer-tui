@@ -90,7 +90,7 @@ pub fn draw_captured_frames(f: &mut ratatui::Frame, app: &mut App, area: Rect) {
                 vec.iter()
                     .rev()
                     .filter(|f| (filter.filter_callback)(f, &filter.ids))
-                    .take(100)
+                    .take(app.frames_displayed_max)
                     .enumerate()
                     .for_each(|(i, frame)| {
                         let color = match i % 2 {
@@ -106,7 +106,7 @@ pub fn draw_captured_frames(f: &mut ratatui::Frame, app: &mut App, area: Rect) {
             } else {
                 vec.iter()
                     .rev()
-                    .take(100)
+                    .take(app.frames_displayed_max)
                     .enumerate()
                     .for_each(|(i, frame)| {
                         let color = match i % 2 {
