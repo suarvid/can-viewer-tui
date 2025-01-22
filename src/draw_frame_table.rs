@@ -27,7 +27,7 @@ fn get_header_for_timestamped_frames(header_style: Style) -> Row<'static> {
     .style(header_style)
 }
 
-fn get_header_for_frame_set(header_style: Style) -> Row<'static> {
+fn get_header_for_counted_frame_set(header_style: Style) -> Row<'static> {
     ["ID", "DLC", "Count", "Extended", "Data (hex)"]
         .into_iter()
         .map(Cell::from)
@@ -59,7 +59,7 @@ fn get_row_for_timestamped_frame<'a>(frame: &TimestampedFrame) -> Vec<Cell<'a>> 
     cells
 }
 
-fn get_row_for_frame_set<'a>(frame: &CountedFrame) -> Vec<Cell<'a>> {
+fn get_row_for_counted_frame_set<'a>(frame: &CountedFrame) -> Vec<Cell<'a>> {
     let mut cells = vec![];
     cells.push(Cell::from(Text::from(format!(
         "0x{:x}",
@@ -119,12 +119,12 @@ fn draw_frame_set(
             Constraint::Percentage(100),
         ],
     )
-    .header(get_header_for_frame_set(header_style))
+    .header(get_header_for_counted_frame_set(header_style))
     .highlight_style(selected_style);
     f.render_stateful_widget(table, area, &mut app.table_state);
 }
 
-pub fn draw_captured_frame_set(f: &mut ratatui::Frame, app: &mut App, area: Rect) {
+pub fn draw_counted_frame_set(f: &mut ratatui::Frame, app: &mut App, area: Rect) {
     let header_style = Style::default().fg(Color::White).bg(Color::Black);
     let selected_style = Style::default().fg(Color::Black).bg(Color::LightYellow);
 
@@ -144,7 +144,7 @@ pub fn draw_captured_frame_set(f: &mut ratatui::Frame, app: &mut App, area: Rect
                 _ => app.row_color_alt,
             };
 
-            let cells = get_row_for_frame_set(frame);
+            let cells = get_row_for_counted_frame_set(frame);
             rows.push(Row::new(cells).style(Style::default().fg(Color::Black).bg(color)))
         });
 

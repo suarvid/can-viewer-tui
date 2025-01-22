@@ -181,14 +181,16 @@ impl FrameCaptor {
     }
 
     pub fn get_frames_per_second_history(&self) -> Vec<(f64, f64)> {
-        let frapp = self
+        let now = SystemTime::now();
+
+        let frame_rate_history = self
             .captured_frames
             .lock()
             .unwrap()
             .frames_per_second_history
             .clone();
-        let now = SystemTime::now();
-        frapp
+
+        frame_rate_history
             .iter()
             .map(|(fps, timestamp)| {
                 (

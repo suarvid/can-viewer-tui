@@ -129,7 +129,7 @@ impl<'a> App<'a> {
         match self.lorem_ipsum {
             LoremIpsum::FrameList => {
                 self.lorem_ipsum = LoremIpsum::FrameSet;
-                self.draw_frame_table = draw_frame_table::draw_captured_frame_set;
+                self.draw_frame_table = draw_frame_table::draw_counted_frame_set;
             }
             LoremIpsum::FrameSet => {
                 self.lorem_ipsum = LoremIpsum::FrameList;
