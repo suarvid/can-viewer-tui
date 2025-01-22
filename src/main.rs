@@ -47,6 +47,7 @@ pub struct App<'a> {
     pub row_color_main: Color,
     pub row_color_alt: Color,
     pub frames_displayed_max: u32,
+    pub draw_frame_table: fn(&mut ratatui::Frame, app: &mut App, area: Rect)
 }
 
 impl<'a> App<'a> {
@@ -67,6 +68,7 @@ impl<'a> App<'a> {
             row_color_main: Color::White,
             row_color_alt: Color::Gray,
             frames_displayed_max,
+            draw_frame_table: ui::draw_captured_frames,
         }
     }
 

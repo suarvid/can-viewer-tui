@@ -27,7 +27,7 @@ pub fn ui(f: &mut ratatui::Frame, app: &mut App) {
         "<T> ".blue().bold(),
     ]));
 
-    draw_captured_frames(f, app, rects[1]);
+    (app.draw_frame_table)(f, app, rects[1]);
 
     draw_frames_per_second_chart(
         f,
@@ -166,7 +166,7 @@ fn draw_frames_per_second_chart(
     frame.render_widget(chart, area);
 }
 
-fn draw_captured_frames(f: &mut ratatui::Frame, app: &mut App, area: Rect) {
+pub fn draw_captured_frames(f: &mut ratatui::Frame, app: &mut App, area: Rect) {
     let header_style = Style::default().fg(Color::White).bg(Color::Black);
     let selected_style = Style::default().fg(Color::Black).bg(Color::LightYellow);
 
