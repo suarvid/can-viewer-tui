@@ -42,13 +42,16 @@ struct Args {
     frame_table_size: usize,
 }
 
-pub enum LoremIpsum {
+pub enum FrameView {
     FrameList,
     FrameSet,
 }
 
+/// Function pointer to function for drawing the main table of captured frames
+type DrawFrameTableCallback = fn(&mut ratatui::Frame, app: &mut App, area: Rect);
+
 pub struct App<'a> {
-    pub lorem_ipsum: LoremIpsum,
+    pub frame_view: FrameView,
     pub table_state: TableState,
     pub title: &'a str,
     pub frames_per_second_max: u32,
@@ -58,7 +61,7 @@ pub struct App<'a> {
     pub row_color_main: Color,
     pub row_color_alt: Color,
     pub frames_displayed_max: usize,
-    pub draw_frame_table: fn(&mut ratatui::Frame, app: &mut App, area: Rect),
+    pub draw_frame_table: DrawFrameTableCallback,
 }
 
 impl<'a> App<'a> {
@@ -70,7 +73,7 @@ impl<'a> App<'a> {
         frame_captor: FrameCaptor,
     ) -> Self {
         App {
-            lorem_ipsum: LoremIpsum::FrameList,
+            frame_view: FrameView::FrameList,
             table_state: TableState::default().with_selected(0),
             title,
             frames_per_second_max,
@@ -85,9 +88,9 @@ impl<'a> App<'a> {
     }
 
     fn get_frame_table_len(&mut self) -> usize {
-        match self.lorem_ipsum {
-            LoremIpsum::FrameList => self.frame_captor.get_captured_frames_list_len(),
-            LoremIpsum::FrameSet => self.frame_captor.get_captured_frames_set_len(),
+        match self.frame_view {
+            FrameView::FrameList => self.frame_captor.get_captured_frames_list_len(),
+            FrameView::FrameSet => self.frame_captor.get_captured_frames_set_len(),
         }
     }
 
@@ -127,13 +130,13 @@ impl<'a> App<'a> {
     }
 
     pub fn toggle_frame_table_ui(&mut self) {
-        match self.lorem_ipsum {
-            LoremIpsum::FrameList => {
-                self.lorem_ipsum = LoremIpsum::FrameSet;
+        match self.frame_view {
+            FrameView::FrameList => {
+                self.frame_view = FrameView::FrameSet;
                 self.draw_frame_table = draw_frame_table::draw_counted_frame_set;
             }
-            LoremIpsum::FrameSet => {
-                self.lorem_ipsum = LoremIpsum::FrameList;
+            FrameView::FrameSet => {
+                self.frame_view = FrameView::FrameList;
                 self.draw_frame_table = draw_frame_table::draw_timestamped_frame_table;
             }
         }
